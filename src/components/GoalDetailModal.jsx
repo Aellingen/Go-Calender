@@ -156,23 +156,26 @@ export default function GoalDetailModal({ goal, onClose }) {
         {/* Body: actions grid */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '20px 28px 24px' }}>
           {actions.length === 0 ? (
-            <div
-              onClick={() => useUIStore.getState().openCreateAction(goal)}
-              style={{ textAlign: 'center', padding: '48px 0', cursor: 'pointer' }}
-            >
-              <div style={{
-                width: 48, height: 48, borderRadius: 'var(--r-lg)',
-                background: 'var(--accent-softer)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                margin: '0 auto 12px',
-              }}>
+            <div style={{ textAlign: 'center', padding: '48px 0' }}>
+              <div
+                onClick={() => useUIStore.getState().openCreateAction(goal)}
+                style={{
+                  width: 48, height: 48, borderRadius: 'var(--r-lg)',
+                  background: 'var(--accent-softer)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  margin: '0 auto 12px', cursor: 'pointer',
+                }}
+              >
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round">
                   <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
                 </svg>
               </div>
               <p style={{ fontSize: 14, color: 'var(--text-muted)' }}>
                 No actions yet —{' '}
-                <span style={{ color: 'var(--accent)', fontWeight: 700 }}>
+                <span
+                  onClick={() => useUIStore.getState().openCreateAction(goal)}
+                  style={{ color: 'var(--accent)', cursor: 'pointer', fontWeight: 700 }}
+                >
                   add your first action
                 </span>
               </p>
