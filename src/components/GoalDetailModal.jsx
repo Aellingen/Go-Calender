@@ -156,7 +156,10 @@ export default function GoalDetailModal({ goal, onClose }) {
         {/* Body: actions grid */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '20px 28px 24px' }}>
           {actions.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '48px 0' }}>
+            <div
+              onClick={() => useUIStore.getState().openCreateAction(goal)}
+              style={{ textAlign: 'center', padding: '48px 0', cursor: 'pointer' }}
+            >
               <div style={{
                 width: 48, height: 48, borderRadius: 'var(--r-lg)',
                 background: 'var(--accent-softer)',
@@ -169,10 +172,7 @@ export default function GoalDetailModal({ goal, onClose }) {
               </div>
               <p style={{ fontSize: 14, color: 'var(--text-muted)' }}>
                 No actions yet —{' '}
-                <span
-                  onClick={() => useUIStore.getState().openCreateAction(goal)}
-                  style={{ color: 'var(--accent)', cursor: 'pointer', fontWeight: 700 }}
-                >
+                <span style={{ color: 'var(--accent)', fontWeight: 700 }}>
                   add your first action
                 </span>
               </p>
