@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Go Calendar — Monthly Review Panel v2</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@700;800&family=Nunito:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F6F4F0;
+    --card: #FFFFFF;
+    --accent: #7C3AED;
+    --accent-light: #A78BFA;
+    --accent-softer: #EDE9FE;
+    --orange: #F97316;
+    --orange-soft: #FFF7ED;
+    --green: #10B981;
+    --green-soft: #ECFDF5;
+    --yellow: #D97706;
+    --yellow-soft: #FEF3C7;
+    --text-primary: #1C1917;
+    --text-secondary: #57534E;
+    --text-muted: #A8A29E;
+    --text-dim: #D6D3D1;
+    --border: #E7E5E4;
+    --shadow-deep: 0 8px 32px rgba(120,100,80,0.12), 0 16px 48px rgba(120,100,80,0.08);
+    --shadow-purple: 0 4px 14px rgba(124,58,237,0.25);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Nunito', sans-serif; background: rgba(28,25,23,0.35);
+    min-height: 100vh; display: flex; align-items: center; justify-content: center;
+    padding: 40px 20px; backdrop-filter: blur(4px);
+  }
+  .font-display { font-family: 'Bricolage Grotesque', sans-serif; }
+
+  .review-panel {
+    background: var(--card); border-radius: 28px; width: 100%; max-width: 780px;
+    max-height: 85vh; overflow-y: auto; box-shadow: var(--shadow-deep);
+    animation: panelIn 0.3s ease;
+  }
+  @keyframes panelIn {
+    from { opacity: 0; transform: scale(0.97) translateY(8px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+  }
+
+  .review-header {
+    padding: 28px 32px 20px; border-bottom: 1px solid var(--border);
+    display: flex; justify-content: space-between; align-items: flex-start;
+  }
+  .review-period-label {
+    font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;
+    color: var(--yellow); background: var(--yellow-soft);
+    display: inline-block; padding: 3px 10px; border-radius: 9999px; margin-bottom: 8px;
+  }
+  .review-title { font-size: 24px; font-weight: 800; letter-spacing: -0.5px; }
+  .review-subtitle { font-size: 13.5px; color: var(--text-muted); margin-top: 4px; }
+  .close-btn {
+    width: 36px; height: 36px; border-radius: 12px; border: none;
+    background: #F5F5F4; cursor: pointer; display: flex;
+    align-items: center; justify-content: center;
+  }
+  .close-btn svg { width: 16px; height: 16px; stroke: var(--text-secondary); stroke-width: 2; }
+
+  .review-body { padding: 24px 32px 32px; }
+  .section-label {
+    font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 1px; color: var(--text-muted); margin-bottom: 12px;
+  }
+
+  /* Monthly action cards — same slider pattern as weekly */
+  .action-review-list { display: flex; flex-direction: column; gap: 14px; }
+  .action-review-card {
+    background: #FAFAF9; border: 1px solid var(--border); border-radius: 18px;
+    padding: 18px 20px; transition: border-color 0.2s;
+  }
+  .action-review-card.dirty { border-color: var(--accent-light); background: #FDFCFB; }
+  .action-top-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; }
+  .action-name { font-size: 14px; font-weight: 800; letter-spacing: -0.2px; }
+  .action-parent { font-size: 11.5px; color: var(--text-muted); font-weight: 600; margin-top: 2px; }
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; margin-left: 6px; display: inline-block; vertical-align: middle; }
+  .status-dot.hit { background: var(--green); box-shadow: 0 0 6px rgba(16,185,129,0.4); }
+  .status-dot.miss { background: var(--orange); box-shadow: 0 0 6px rgba(249,115,22,0.3); }
+  .value-display { text-align: right; }
+  .value-current { font-size: 24px; font-weight: 800; letter-spacing: -0.5px; transition: color 0.2s; }
+  .value-current.at-logged { color: var(--text-primary); }
+  .value-current.edited { color: var(--accent); }
+  .value-of-target { font-size: 12px; color: var(--text-muted); font-weight: 600; }
+
+  .slider-row { display: flex; align-items: center; gap: 10px; }
+  .stepper-btn {
+    width: 30px; height: 30px; border-radius: 9999px; border: 1.5px solid var(--border);
+    background: white; cursor: pointer; display: flex;
+    align-items: center; justify-content: center; transition: all 0.15s; flex-shrink: 0;
+  }
+  .stepper-btn:hover { border-color: var(--accent); background: var(--accent-softer); }
+  .stepper-btn:active { transform: scale(0.92); }
+  .stepper-btn svg { width: 12px; height: 12px; stroke: var(--text-secondary); stroke-width: 2.5; }
+  .stepper-btn:hover svg { stroke: var(--accent); }
+
+  .slider-track-container { flex: 1; height: 30px; display: flex; align-items: center; position: relative; cursor: pointer; }
+  .slider-track { width: 100%; height: 8px; border-radius: 9999px; background: #EEECE9; position: relative; overflow: hidden; }
+  .slider-fill-logged { position: absolute; top: 0; left: 0; height: 100%; border-radius: 9999px; background: linear-gradient(90deg, var(--accent), var(--accent-light)); transition: width 0.2s; }
+  .slider-fill-delta { position: absolute; top: 0; height: 100%; transition: left 0.2s, width 0.2s; }
+  .slider-fill-delta.increase { background: rgba(124,58,237,0.25); border-radius: 0 9999px 9999px 0; }
+  .slider-fill-delta.decrease { background: rgba(239,68,68,0.2); border-radius: 9999px 0 0 9999px; }
+  .slider-thumb {
+    position: absolute; top: 50%; transform: translate(-50%,-50%);
+    width: 18px; height: 18px; border-radius: 50%; background: white;
+    border: 2.5px solid var(--accent); box-shadow: 0 1px 4px rgba(124,58,237,0.2);
+    cursor: grab; z-index: 2;
+  }
+  .logged-marker {
+    position: absolute; top: -4px; width: 2px; height: 16px;
+    background: var(--accent); border-radius: 1px; opacity: 0.4;
+    transform: translateX(-50%); z-index: 1;
+  }
+
+  /* ================================ */
+  /* WEEKLY ROLLUP — collapsible rows */
+  /* ================================ */
+  .weekly-rollup {
+    margin-top: 28px;
+    background: linear-gradient(135deg, #FAFAF9, #F5F3EF);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    overflow: hidden;
+  }
+  .weekly-rollup-title {
+    font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 1px; color: var(--text-muted);
+    padding: 16px 20px 0; display: flex; align-items: center; gap: 8px;
+  }
+  .weekly-rollup-title svg { width: 14px; height: 14px; stroke: var(--text-muted); fill: none; stroke-width: 2; }
+
+  /* Week row — collapsed state */
+  .week-row {
+    cursor: pointer; transition: background 0.15s;
+    border-bottom: 1px solid rgba(0,0,0,0.04);
+  }
+  .week-row:last-child { border-bottom: none; }
+  .week-row:hover { background: rgba(0,0,0,0.02); }
+
+  .week-row-header {
+    display: grid;
+    grid-template-columns: 1fr auto auto auto;
+    gap: 12px;
+    align-items: center;
+    padding: 14px 20px;
+  }
+
+  .week-label { font-size: 13px; font-weight: 700; color: var(--text-secondary); }
+  .week-dates { font-size: 11px; font-weight: 600; color: var(--text-dim); }
+
+  /* Completion percentage bar */
+  .week-pct-bar {
+    width: 80px; height: 6px; border-radius: 9999px; background: #E7E5E4;
+    overflow: hidden;
+  }
+  .week-pct-bar-fill {
+    height: 100%; border-radius: 9999px; transition: width 0.3s;
+  }
+
+  .week-pct-val {
+    font-size: 13px; font-weight: 800; min-width: 40px; text-align: right;
+  }
+
+  .week-chevron {
+    width: 20px; height: 20px; display: flex; align-items: center; justify-content: center;
+    transition: transform 0.2s;
+  }
+  .week-chevron svg { width: 14px; height: 14px; stroke: var(--text-dim); stroke-width: 2; fill: none; }
+  .week-row.expanded .week-chevron { transform: rotate(180deg); }
+
+  /* Expanded detail */
+  .week-detail {
+    max-height: 0; overflow: hidden; transition: max-height 0.3s ease, padding 0.3s ease;
+    padding: 0 20px;
+    background: rgba(255,255,255,0.5);
+  }
+  .week-row.expanded .week-detail {
+    max-height: 400px;
+    padding: 0 20px 16px;
+  }
+  .week-detail-inner {
+    padding-top: 4px;
+  }
+  .week-action-item {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 7px 0;
+    border-bottom: 1px solid rgba(0,0,0,0.04);
+  }
+  .week-action-item:last-child { border-bottom: none; }
+  .week-action-name { font-size: 12px; font-weight: 700; color: var(--text-secondary); }
+  .week-action-result { display: flex; align-items: center; gap: 8px; }
+  .week-action-val { font-size: 12px; font-weight: 800; }
+  .result-badge {
+    font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 9999px;
+    text-transform: uppercase; letter-spacing: 0.3px;
+  }
+  .result-badge.hit { background: var(--green-soft); color: var(--green); }
+  .result-badge.miss { background: var(--orange-soft); color: var(--orange); }
+  .result-badge.partial { background: #FEFCE8; color: var(--yellow); }
+
+  /* Week note preview */
+  .week-note-preview {
+    margin-top: 8px; padding: 8px 12px; background: white;
+    border-radius: 10px; border: 1px solid var(--border);
+    font-size: 11.5px; color: var(--text-muted); font-style: italic; line-height: 1.5;
+  }
+
+  .divider { height: 1px; background: var(--border); margin: 24px 0; }
+
+  .notes-section { margin-top: 28px; }
+  .notes-textarea {
+    width: 100%; min-height: 100px; border-radius: 16px;
+    border: 2px solid var(--border); background: #FAFAF9;
+    padding: 16px; font-family: 'Nunito', sans-serif;
+    font-size: 14px; color: var(--text-primary);
+    resize: vertical; outline: none; line-height: 1.6;
+  }
+  .notes-textarea:focus { border-color: var(--accent); background: white; }
+  .notes-textarea::placeholder { color: var(--text-dim); }
+
+  .review-footer {
+    padding: 20px 32px 28px; display: flex;
+    justify-content: space-between; align-items: center;
+    border-top: 1px solid var(--border); margin-top: 8px;
+  }
+  .btn-later {
+    font-family: 'Nunito', sans-serif; font-size: 13px; font-weight: 600;
+    color: var(--text-muted); background: none; border: none; cursor: pointer; padding: 8px 16px;
+  }
+  .btn-complete {
+    font-family: 'Nunito', sans-serif; font-size: 14px; font-weight: 700;
+    color: white; background: var(--accent); border: none; cursor: pointer;
+    padding: 12px 28px; border-radius: 9999px; box-shadow: var(--shadow-purple); transition: all 0.2s;
+  }
+  .btn-complete:hover { transform: translateY(-2px); }
+  .review-footer-info { font-size: 11px; color: var(--text-dim); font-weight: 600; }
+</style>
+</head>
+<body>
+
+<div class="review-panel">
+  <div class="review-header">
+    <div>
+      <div class="review-period-label font-display">Monthly Review</div>
+      <div class="review-title font-display">February 2026</div>
+      <div class="review-subtitle">Close out the month. Seal your numbers and reflect.</div>
+    </div>
+    <button class="close-btn">
+      <svg viewBox="0 0 24 24" fill="none"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
+    </button>
+  </div>
+
+  <div class="review-body">
+    <!-- Monthly goals with sliders -->
+    <div class="section-label">Monthly goals — final values</div>
+    <div class="action-review-list">
+      <div class="action-review-card" id="card1">
+        <div class="action-top-row">
+          <div>
+            <div class="action-name font-display">Books completed <span class="status-dot hit"></span></div>
+            <div class="action-parent">Read 12 Books</div>
+          </div>
+          <div class="value-display">
+            <div class="value-current at-logged font-display" id="val1">1</div>
+            <div class="value-of-target">of 1 books</div>
+          </div>
+        </div>
+        <div class="slider-row">
+          <button class="stepper-btn" onclick="adjust(1,-1)"><svg viewBox="0 0 12 12"><line x1="2" y1="6" x2="10" y2="6"/></svg></button>
+          <div class="slider-track-container" id="track1" data-target="1" data-logged="1" data-current="1">
+            <div class="slider-track">
+              <div class="slider-fill-logged" id="fill1-logged"></div>
+              <div class="slider-fill-delta" id="fill1-delta"></div>
+            </div>
+            <div class="slider-thumb" id="thumb1"></div>
+          </div>
+          <button class="stepper-btn" onclick="adjust(1,1)"><svg viewBox="0 0 12 12"><line x1="2" y1="6" x2="10" y2="6"/><line x1="6" y1="2" x2="6" y2="10"/></svg></button>
+        </div>
+      </div>
+
+      <div class="action-review-card" id="card2">
+        <div class="action-top-row">
+          <div>
+            <div class="action-name font-display">Sparring rounds <span class="status-dot miss"></span></div>
+            <div class="action-parent">Muay Thai Fight</div>
+          </div>
+          <div class="value-display">
+            <div class="value-current at-logged font-display" id="val2">5</div>
+            <div class="value-of-target">of 8 rounds</div>
+          </div>
+        </div>
+        <div class="slider-row">
+          <button class="stepper-btn" onclick="adjust(2,-1)"><svg viewBox="0 0 12 12"><line x1="2" y1="6" x2="10" y2="6"/></svg></button>
+          <div class="slider-track-container" id="track2" data-target="8" data-logged="5" data-current="5">
+            <div class="slider-track">
+              <div class="slider-fill-logged" id="fill2-logged"></div>
+              <div class="slider-fill-delta" id="fill2-delta"></div>
+            </div>
+            <div class="logged-marker" id="marker2"></div>
+            <div class="slider-thumb" id="thumb2"></div>
+          </div>
+          <button class="stepper-btn" onclick="adjust(2,1)"><svg viewBox="0 0 12 12"><line x1="2" y1="6" x2="10" y2="6"/><line x1="6" y1="2" x2="6" y2="10"/></svg></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Weekly roll-up — collapsible -->
+    <div class="weekly-rollup">
+      <div class="weekly-rollup-title">
+        <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        Weekly performance this month
+      </div>
+
+      <!-- Week 1 -->
+      <div class="week-row" onclick="toggleWeek(this)">
+        <div class="week-row-header">
+          <div>
+            <div class="week-label font-display">Week 1</div>
+            <div class="week-dates">Feb 1 – 7</div>
+          </div>
+          <div class="week-pct-bar">
+            <div class="week-pct-bar-fill" style="width:75%;background:linear-gradient(90deg,var(--accent),var(--accent-light))"></div>
+          </div>
+          <div class="week-pct-val font-display" style="color:var(--accent)">75%</div>
+          <div class="week-chevron"><svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg></div>
+        </div>
+        <div class="week-detail">
+          <div class="week-detail-inner">
+            <div class="week-action-item">
+              <span class="week-action-name">Attend practice</span>
+              <div class="week-action-result">
+                <span class="week-action-val font-display" style="color:var(--green)">5 / 5</span>
+                <span class="result-badge hit">Hit</span>
+              </div>
+            </div>
+            <div class="week-action-item">
+              <span class="week-action-name">Run 5K intervals</span>
+              <div class="week-action-result">
+                <span class="week-action-val font-display" style="color:var(--green)">4 / 4</span>
+                <span class="result-badge hit">Hit</span>
+              </div>
+            </div>
+            <div class="week-action-item">
+              <span class="week-action-name">Shadow boxing drills</span>
+              <div class="week-action-result">
+                <span class="week-action-val font-display" style="color:var(--orange)">2 / 4</span>
+                <span class="result-badge miss">Miss</span>
+              </div>
+            </div>
+            <div class="week-action-item">
+              <span class="week-action-name">Read 30 min</span>
+              <div class="week-action-result">
+                <span class="week-action-val font-display" style="color:var(--green)">6 / 5</span>
+                <span class="result-badge hit">Hit</span>
+              </div>
+            </div>
+            <div class="week-note-preview">Good start to the month. Shadow boxing still inconsistent.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Week 2 — expanded by default for demo -->
+      <div class="week-row expanded" onclick="toggleWeek(this)">
+        <div class="week-row-header">
+          <div>
+            <div class="week-label font-display">Week 2</div>
+            <div class="week-dates">Feb 8 – 14</div>
+          </div>
+          <div class="week-pct-bar">
+            <div class="week-pct-bar-fill" style="width:100%;background:linear-gradient(90deg,var(--green),#34D399)"></div>
+          </div>
+          <div class="week-pct-val font-display" style="color:var(--green)">100%</div>
+          <div class="week-chevron"><svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg></div>
+        </div>
+        <div class="week-detail">
+          <div class="week-detail-inner">
+            <div class="week-action-item">
+              <span class="week-action-name">Attend practice</span>
+              <div class="week-action-result">
+                <span class="week-action-val font-display" style="color:var(--green)">5 / 5</span>
+                <span class="result-badge hit">Hit</span>
+              </div>
+            </div>
+            <div class="week-action-item">
+              <span class="week-action-name">Run 5K intervals</span>
+              <div class="week-action-result">
+                <span class="week-action-val font-display" style="color:var(--green)">5 / 5</span>
+                <span class="result-badge hit">Hit</span>
+              </div>
+            </div>
+            <div class="week-action-item">
+              <span class="week-action-name">Shadow boxing drills</span>
+              <div class="week-action-result">
+                <span class="week-action-val font-display" style="color:var(--green)">4 / 4</span>
+                <span class="result-badge hit">Hit</span>
+              </div>
+            </div>
+            <div class="week-action-item">
+              <span class="week-action-name">Read 30 min</span>
+              <div class="week-action-result">
+                <span class="week-action-val font-display" style="color:var(--green)">7 / 5</span>
+                <span class="result-badge hit">Hit</span>
+              </div>
+            </div>
+            <div class="week-note-preview">Perfect week. Everything clicked.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Week 3 -->
+      <div class="week-row" onclick="toggleWeek(this)">
+        <div class="week-row-header">
+          <div>
+            <div class="week-label font-display">Week 3</div>
+            <div class="week-dates">Feb 15 – 21</div>
+          </div>
+          <div class="week-pct-bar">
+            <div class="week-pct-bar-fill" style="width:50%;background:linear-gradient(90deg,var(--orange),#FBBF24)"></div>
+          </div>
+          <div class="week-pct-val font-display" style="color:var(--orange)">50%</div>
+          <div class="week-chevron"><svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg></div>
+        </div>
+        <div class="week-detail">
+          <div class="week-detail-inner">
+            <div class="week-action-item">
+              <span class="week-action-name">Attend practice</span>
+              <div class="week-action-result">
+                <span class="week-action-val font-display" style="color:var(--green)">4 / 5</span>
+                <span class="result-badge hit">Hit</span>
+              </div>
+            </div>
+            <div class="week-action-item">
+              <span class="week-action-name">Run 5K intervals</span>
+              <div class="week-action-result">
+                <span class="week-action-val font-display" style="color:var(--orange)">2 / 5</span>
+                <span class="result-badge miss">Miss</span>
+              </div>
+            </div>
+            <div class="week-action-item">
+              <span class="week-action-name">Shadow boxing drills</span>
+              <div class="week-action-result">
+                <span class="week-action-val font-display" style="color:var(--green)">4 / 4</span>
+                <span class="result-badge hit">Hit</span>
+              </div>
+            </div>
+            <div class="week-action-item">
+              <span class="week-action-name">Read 30 min</span>
+              <div class="week-action-result">
+                <span class="week-action-val font-display" style="color:var(--orange)">4 / 5</span>
+                <span class="result-badge miss">Miss</span>
+              </div>
+            </div>
+            <div class="week-note-preview">Knee was bothering me mid-week so I swapped running for swimming twice.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Week 4 -->
+      <div class="week-row" onclick="toggleWeek(this)">
+        <div class="week-row-header">
+          <div>
+            <div class="week-label font-display">Week 4</div>
+            <div class="week-dates">Feb 22 – 28</div>
+          </div>
+          <div class="week-pct-bar">
+            <div class="week-pct-bar-fill" style="width:75%;background:linear-gradient(90deg,var(--accent),var(--accent-light))"></div>
+          </div>
+          <div class="week-pct-val font-display" style="color:var(--accent)">75%</div>
+          <div class="week-chevron"><svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg></div>
+        </div>
+        <div class="week-detail">
+          <div class="week-detail-inner">
+            <div class="week-action-item">
+              <span class="week-action-name">Attend practice</span>
+              <div class="week-action-result">
+                <span class="week-action-val font-display" style="color:var(--green)">5 / 5</span>
+                <span class="result-badge hit">Hit</span>
+              </div>
+            </div>
+            <div class="week-action-item">
+              <span class="week-action-name">Run 5K intervals</span>
+              <div class="week-action-result">
+                <span class="week-action-val font-display" style="color:var(--green)">4 / 5</span>
+                <span class="result-badge hit">Hit</span>
+              </div>
+            </div>
+            <div class="week-action-item">
+              <span class="week-action-name">Shadow boxing drills</span>
+              <div class="week-action-result">
+                <span class="week-action-val font-display" style="color:var(--green)">4 / 4</span>
+                <span class="result-badge hit">Hit</span>
+              </div>
+            </div>
+            <div class="week-action-item">
+              <span class="week-action-name">Read 30 min</span>
+              <div class="week-action-result">
+                <span class="week-action-val font-display" style="color:var(--orange)">3 / 5</span>
+                <span class="result-badge miss">Miss</span>
+              </div>
+            </div>
+            <div class="week-note-preview">Strong training week. Reading fell off because of the Berlin trip.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="notes-section">
+      <div class="section-label">Notes on this month</div>
+      <textarea class="notes-textarea" placeholder="How did the month go? Any patterns you noticed?"></textarea>
+    </div>
+  </div>
+
+  <div class="review-footer">
+    <button class="btn-later">Later</button>
+    <div class="review-footer-info">Seals February and starts new monthly period</div>
+    <button class="btn-complete">Complete Review</button>
+  </div>
+</div>
+
+<script>
+// Toggle week expansion
+function toggleWeek(el) {
+  el.classList.toggle('expanded');
+}
+
+// Slider logic (same as weekly review)
+const sliders = {};
+
+function initSlider(id) {
+  const track = document.getElementById(`track${id}`);
+  const target = parseInt(track.dataset.target);
+  const logged = parseInt(track.dataset.logged);
+  sliders[id] = { target, logged, current: parseInt(track.dataset.current) };
+  render(id);
+
+  track.addEventListener('click', (e) => {
+    const rect = track.querySelector('.slider-track').getBoundingClientRect();
+    const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    sliders[id].current = Math.round(pct * target);
+    render(id);
+  });
+
+  const thumb = document.getElementById(`thumb${id}`);
+  let dragging = false;
+  thumb.addEventListener('mousedown', (e) => { dragging = true; e.preventDefault(); });
+  document.addEventListener('mousemove', (e) => {
+    if (!dragging) return;
+    const rect = track.querySelector('.slider-track').getBoundingClientRect();
+    const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    sliders[id].current = Math.round(pct * target);
+    render(id);
+  });
+  document.addEventListener('mouseup', () => { dragging = false; });
+}
+
+function adjust(id, delta) {
+  const s = sliders[id];
+  s.current = Math.max(0, Math.min(s.target, s.current + delta));
+  render(id);
+}
+
+function render(id) {
+  const s = sliders[id];
+  const { target, logged, current } = s;
+  const isDirty = current !== logged;
+
+  const valEl = document.getElementById(`val${id}`);
+  valEl.textContent = current;
+  valEl.className = `value-current font-display ${isDirty ? 'edited' : 'at-logged'}`;
+
+  const card = document.getElementById(`card${id}`);
+  card.className = `action-review-card${isDirty ? ' dirty' : ''}`;
+
+  const thumb = document.getElementById(`thumb${id}`);
+  const pct = (current / target) * 100;
+  thumb.style.left = `${pct}%`;
+
+  const loggedFill = document.getElementById(`fill${id}-logged`);
+  loggedFill.style.width = current >= logged ? `${(logged / target) * 100}%` : `${pct}%`;
+
+  const deltaFill = document.getElementById(`fill${id}-delta`);
+  if (current > logged) {
+    deltaFill.style.left = `${(logged / target) * 100}%`;
+    deltaFill.style.width = `${((current - logged) / target) * 100}%`;
+    deltaFill.className = 'slider-fill-delta increase';
+    deltaFill.style.display = 'block';
+  } else if (current < logged) {
+    deltaFill.style.left = `${pct}%`;
+    deltaFill.style.width = `${((logged - current) / target) * 100}%`;
+    deltaFill.className = 'slider-fill-delta decrease';
+    deltaFill.style.display = 'block';
+  } else {
+    deltaFill.style.width = '0%';
+    deltaFill.style.display = 'none';
+  }
+
+  const marker = document.getElementById(`marker${id}`);
+  if (marker) {
+    marker.style.display = isDirty ? 'block' : 'none';
+    marker.style.left = `${(logged / target) * 100}%`;
+  }
+}
+
+[1, 2].forEach(initSlider);
+</script>
+
+</body>
+</html>

@@ -1,0 +1,122 @@
+import { useState, useEffect } from 'react';
+import { useUpdateAction } from '../hooks/useActions';
+import DatePicker from './DatePicker';
+
+export default function ActionEditModal({ action, onClose }) {
+  const updateAction = useUpdateAction();
+  const [name, setName] = useState(action.name || '');
+  const [target, setTarget] = useState(action.target != null ? String(action.target) : '');
+  const [dueDate, setDueDate] = useState(action.dueDate || '');
+  const [periodType, setPeriodType] = useState(action.periodType || '');
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    const handleKey = (e) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [onClose]);
+
+  const handleSave = async () => {
+    setSaving(true);
+    const data = {};
+    if (name.trim() && name.trim() !== action.name) data.name = name.trim();
+    if (target !== (action.target != null ? String(action.target) : '')) data.target = target ? Number(target) : null;
+    if (dueDate !== (action.dueDate || '')) data.dueDate = dueDate || null;
+    if (periodType !== (action.periodType || '')) data.periodType = periodType || null;
+    if (Object.keys(data).length > 0) {
+      try { await updateAction.mutateAsync({ actionId: action.id, ...data }); } catch {}
+    }
+    setSaving(false);
+    onClose();
+  };
+
+  return (
+    <div
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      style={{
+        position: 'fixed', inset: 0,
+        background: 'rgba(28,25,23,0.35)', backdropFilter: 'blur(4px)',
+        zIndex: 60,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="animate-modal-in"
+        style={{
+          width: 400, background: 'var(--surface)',
+          border: '1px solid var(--border)', borderRadius: 'var(--r-2xl)',
+          boxShadow: 'var(--shadow-lg)', overflow: 'hidden',
+        }}
+      >
+        <div style={{ padding: '22px 24px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <h3 className="font-display" style={{ fontSize: 17, color: 'var(--text)', margin: 0 }}>Edit Action</h3>
+          <button onClick={onClose} style={{
+            width: 30, height: 30, borderRadius: 'var(--r-sm)',
+            background: 'var(--bg)', border: '1px solid var(--border)',
+            color: 'var(--text-muted)', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        </div>
+
+        <div style={{ padding: '0 24px 22px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <Field label="Name">
+            <input value={name} onChange={(e) => setName(e.target.value)} style={inputStyle} />
+          </Field>
+          <Field label="Target">
+            <input type="number" value={target} onChange={(e) => setTarget(e.target.value)} style={inputStyle} />
+          </Field>
+          <Field label="Due Date">
+            <DatePicker value={dueDate} onChange={setDueDate} placeholder="Pick a date" />
+          </Field>
+          <Field label="Period">
+            <select value={periodType} onChange={(e) => setPeriodType(e.target.value)} style={{ ...inputStyle, appearance: 'none' }}>
+              <option value="">None</option>
+              <option value="weekly">Weekly</option>
+              <option value="monthly">Monthly</option>
+              <option value="custom">Custom</option>
+            </select>
+          </Field>
+
+          <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+            <button onClick={handleSave} disabled={saving} style={{
+              flex: 1, background: 'var(--accent)', color: '#fff',
+              border: 'none', borderRadius: 'var(--r-full)', padding: '10px 0',
+              fontSize: 13, fontWeight: 700, cursor: 'pointer',
+              opacity: saving ? 0.6 : 1, boxShadow: 'var(--shadow-accent)',
+            }}>
+              {saving ? 'Saving...' : 'Save'}
+            </button>
+            <button onClick={onClose} style={{
+              flex: 1, background: 'var(--bg)', color: 'var(--text-secondary)',
+              border: '1px solid var(--border)', borderRadius: 'var(--r-full)', padding: '10px 0',
+              fontSize: 13, fontWeight: 600, cursor: 'pointer',
+            }}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Field({ label, children }) {
+  return (
+    <div>
+      <label style={{ display: 'block', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)', marginBottom: 5 }}>{label}</label>
+      {children}
+    </div>
+  );
+}
+
+const inputStyle = {
+  background: 'var(--bg)', border: '1px solid var(--border)',
+  borderRadius: 'var(--r-md)', padding: '10px 14px', fontSize: 13.5,
+  color: 'var(--text)', outline: 'none', width: '100%',
+  fontFamily: "'Nunito', sans-serif",
+};

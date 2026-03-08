@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Go Calendar — Review History</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@700;800&family=Nunito:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F6F4F0;
+    --card: #FFFFFF;
+    --accent: #7C3AED;
+    --accent-light: #A78BFA;
+    --accent-softer: #EDE9FE;
+    --orange: #F97316;
+    --orange-soft: #FFF7ED;
+    --green: #10B981;
+    --green-soft: #ECFDF5;
+    --text-primary: #1C1917;
+    --text-secondary: #57534E;
+    --text-muted: #A8A29E;
+    --text-dim: #D6D3D1;
+    --border: #E7E5E4;
+    --shadow-deep: 0 8px 32px rgba(120,100,80,0.12), 0 16px 48px rgba(120,100,80,0.08);
+    --shadow-purple: 0 4px 14px rgba(124,58,237,0.25);
+    --shadow: 0 1px 3px rgba(120,100,80,0.08), 0 4px 12px rgba(120,100,80,0.06);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Nunito', sans-serif; background: rgba(28,25,23,0.35);
+    min-height: 100vh; display: flex; align-items: center; justify-content: center;
+    padding: 40px 20px;
+    backdrop-filter: blur(4px);
+  }
+  .font-display { font-family: 'Bricolage Grotesque', sans-serif; }
+
+  /* Panel */
+  .history-panel {
+    background: var(--card);
+    border-radius: 28px;
+    width: 100%;
+    max-width: 780px;
+    max-height: 85vh;
+    overflow: hidden;
+    box-shadow: var(--shadow-deep);
+    display: flex;
+    flex-direction: column;
+    animation: panelIn 0.3s ease;
+  }
+  @keyframes panelIn {
+    from { opacity: 0; transform: scale(0.97) translateY(8px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+  }
+
+  /* Header with tabs */
+  .panel-header {
+    padding: 28px 32px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .panel-header-top {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    margin-bottom: 20px;
+  }
+  .panel-title { font-size: 24px; font-weight: 800; letter-spacing: -0.5px; }
+  .close-btn {
+    width: 36px; height: 36px; border-radius: 12px; border: none;
+    background: #F5F5F4; cursor: pointer; display: flex;
+    align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .close-btn:hover { background: #EEECE9; }
+  .close-btn svg { width: 16px; height: 16px; stroke: var(--text-secondary); stroke-width: 2; }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 0; }
+  .tab {
+    padding: 10px 20px; font-size: 13px; font-weight: 700;
+    color: var(--text-muted); border: none; background: none;
+    cursor: pointer; position: relative; font-family: 'Nunito', sans-serif;
+    transition: color 0.2s;
+  }
+  .tab:hover { color: var(--text-secondary); }
+  .tab.active { color: var(--accent); }
+  .tab.active::after {
+    content: ''; position: absolute; bottom: -1px; left: 12px; right: 12px;
+    height: 2px; background: var(--accent); border-radius: 2px;
+  }
+  .tab .badge {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 18px; height: 18px; border-radius: 9999px;
+    font-size: 10px; font-weight: 800; margin-left: 6px; padding: 0 5px;
+  }
+  .tab .badge.orange { background: var(--orange); color: white; }
+  .tab .badge.muted { background: #F5F5F4; color: var(--text-muted); }
+
+  /* Body */
+  .panel-body {
+    flex: 1; overflow-y: auto; padding: 24px 32px 32px;
+  }
+
+  /* Pending reviews list */
+  .pending-card {
+    background: var(--orange-soft);
+    border: 1px solid #FED7AA;
+    border-radius: 18px;
+    padding: 18px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .pending-card:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(249,115,22,0.12);
+    border-color: var(--orange);
+  }
+  .pending-left { display: flex; align-items: center; gap: 14px; }
+  .pending-icon {
+    width: 40px; height: 40px; border-radius: 12px;
+    background: var(--orange); display: flex;
+    align-items: center; justify-content: center;
+  }
+  .pending-icon svg { width: 18px; height: 18px; stroke: white; fill: none; stroke-width: 2; }
+  .pending-type { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--orange); }
+  .pending-period { font-size: 15px; font-weight: 800; letter-spacing: -0.2px; }
+  .pending-meta { font-size: 12px; color: var(--text-muted); font-weight: 600; }
+  .pending-arrow { color: var(--orange); font-size: 18px; }
+
+  /* History list */
+  .history-month-label {
+    font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 1px; color: var(--text-muted); margin: 24px 0 12px;
+  }
+  .history-month-label:first-child { margin-top: 0; }
+
+  .history-card {
+    background: #FAFAF9;
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 18px 20px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .history-card:hover {
+    border-color: var(--accent-light);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow);
+  }
+
+  .history-card-top {
+    display: flex; justify-content: space-between; align-items: flex-start;
+  }
+  .history-type-badge {
+    font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.5px; padding: 2px 8px; border-radius: 9999px;
+    display: inline-block; margin-bottom: 4px;
+  }
+  .history-type-badge.weekly { background: var(--accent-softer); color: var(--accent); }
+  .history-type-badge.monthly { background: #FEF3C7; color: #D97706; }
+  .history-period { font-size: 15px; font-weight: 800; letter-spacing: -0.2px; }
+  .history-date { font-size: 11px; color: var(--text-dim); font-weight: 600; margin-top: 2px; }
+
+  /* Summary stats */
+  .history-stats {
+    display: flex; gap: 16px; margin-top: 12px; flex-wrap: wrap;
+  }
+  .history-stat {
+    display: flex; align-items: center; gap: 6px;
+  }
+  .stat-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+  }
+  .stat-dot.green { background: var(--green); }
+  .stat-dot.orange { background: var(--orange); }
+  .stat-label { font-size: 12px; font-weight: 600; color: var(--text-secondary); }
+
+  /* Note preview */
+  .history-note-preview {
+    margin-top: 10px; padding-top: 10px;
+    border-top: 1px solid var(--border);
+    font-size: 12.5px; color: var(--text-muted);
+    font-style: italic;
+    line-height: 1.5;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  /* Score ring */
+  .score-ring {
+    width: 48px; height: 48px; flex-shrink: 0;
+    position: relative; display: flex;
+    align-items: center; justify-content: center;
+  }
+  .score-ring svg { position: absolute; inset: 0; }
+  .score-ring .score-val { font-size: 12px; font-weight: 800; }
+
+  /* Expanded review detail (shown inline when clicked) */
+  .expanded-detail {
+    background: white;
+    border: 2px solid var(--accent-light);
+    border-radius: 18px;
+    padding: 24px;
+    margin-bottom: 10px;
+  }
+  .expanded-header {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    margin-bottom: 16px;
+  }
+  .expanded-badge {
+    font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.5px; padding: 2px 8px; border-radius: 9999px;
+    background: var(--accent-softer); color: var(--accent);
+    display: inline-block; margin-bottom: 4px;
+  }
+  .expanded-period { font-size: 20px; font-weight: 800; letter-spacing: -0.3px; }
+  .expanded-date { font-size: 11px; color: var(--text-dim); font-weight: 600; }
+
+  .expanded-actions { margin-top: 16px; }
+  .expanded-action {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid #F5F5F4;
+  }
+  .expanded-action:last-child { border-bottom: none; }
+  .expanded-action-name { font-size: 13px; font-weight: 700; }
+  .expanded-action-parent { font-size: 11px; color: var(--text-muted); }
+  .expanded-action-result { display: flex; align-items: center; gap: 8px; }
+  .expanded-action-value { font-size: 16px; font-weight: 800; color: var(--accent); }
+  .expanded-action-target { font-size: 12px; color: var(--text-muted); }
+  .result-badge {
+    font-size: 10px; font-weight: 700; padding: 2px 8px;
+    border-radius: 9999px;
+  }
+  .result-badge.hit { background: var(--green-soft); color: var(--green); }
+  .result-badge.miss { background: var(--orange-soft); color: var(--orange); }
+
+  .expanded-note {
+    margin-top: 16px; padding: 14px 16px;
+    background: #FAFAF9; border-radius: 12px;
+    border: 1px solid var(--border);
+    font-size: 13px; color: var(--text-secondary);
+    line-height: 1.6; font-style: italic;
+  }
+  .expanded-note-label {
+    font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.5px; color: var(--text-dim);
+    font-style: normal; margin-bottom: 6px;
+  }
+</style>
+</head>
+<body>
+
+<div class="history-panel">
+  <!-- Header -->
+  <div class="panel-header">
+    <div class="panel-header-top">
+      <div class="panel-title font-display">Reviews</div>
+      <button class="close-btn">
+        <svg viewBox="0 0 24 24" fill="none"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="tabs">
+      <button class="tab active">
+        Pending
+        <span class="badge orange">2</span>
+      </button>
+      <button class="tab" onclick="this.classList.add('active');this.previousElementSibling.classList.remove('active')">
+        History
+        <span class="badge muted">12</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Body -->
+  <div class="panel-body">
+
+    <!-- =================== -->
+    <!-- PENDING TAB CONTENT -->
+    <!-- =================== -->
+
+    <div class="pending-card">
+      <div class="pending-left">
+        <div class="pending-icon">
+          <svg viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg>
+        </div>
+        <div>
+          <div class="pending-type">Weekly Review</div>
+          <div class="pending-period font-display">Mar 1 – Mar 7</div>
+          <div class="pending-meta">4 actions to review</div>
+        </div>
+      </div>
+      <span class="pending-arrow">→</span>
+    </div>
+
+    <div class="pending-card">
+      <div class="pending-left">
+        <div class="pending-icon">
+          <svg viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg>
+        </div>
+        <div>
+          <div class="pending-type">Monthly Review</div>
+          <div class="pending-period font-display">February 2026</div>
+          <div class="pending-meta">2 actions to review · includes 4 weekly summaries</div>
+        </div>
+      </div>
+      <span class="pending-arrow">→</span>
+    </div>
+
+    <!-- =================== -->
+    <!-- HISTORY — shown below pending for this sketch -->
+    <!-- =================== -->
+
+    <div style="margin-top: 32px; padding-top: 24px; border-top: 2px dashed var(--border);">
+      <div style="font-size:11px;font-weight:700;color:var(--text-dim);letter-spacing:1px;text-transform:uppercase;margin-bottom:20px;">
+        ↓ History tab content (shown here for sketch purposes)
+      </div>
+
+      <!-- Expanded detail — what you see when you click a history card -->
+      <div class="expanded-detail">
+        <div class="expanded-header">
+          <div>
+            <div class="expanded-badge">Weekly Review</div>
+            <div class="expanded-period font-display">Feb 22 – Feb 28</div>
+            <div class="expanded-date">Reviewed Mar 1, 2026</div>
+          </div>
+          <div class="score-ring">
+            <svg viewBox="0 0 48 48">
+              <circle cx="24" cy="24" r="20" fill="none" stroke="#EEECE9" stroke-width="3"/>
+              <circle cx="24" cy="24" r="20" fill="none" stroke="var(--green)" stroke-width="3"
+                stroke-dasharray="125.6" stroke-dashoffset="31.4" stroke-linecap="round"
+                transform="rotate(-90 24 24)"/>
+            </svg>
+            <span class="font-display score-val" style="color:var(--green)">3/4</span>
+          </div>
+        </div>
+
+        <div class="expanded-actions">
+          <div class="expanded-action">
+            <div>
+              <div class="expanded-action-name font-display">Attend practice</div>
+              <div class="expanded-action-parent">Muay Thai Fight</div>
+            </div>
+            <div class="expanded-action-result">
+              <span class="expanded-action-value font-display">5</span>
+              <span class="expanded-action-target">/ 5 sessions</span>
+              <span class="result-badge hit">HIT</span>
+            </div>
+          </div>
+          <div class="expanded-action">
+            <div>
+              <div class="expanded-action-name font-display">Run 5K intervals</div>
+              <div class="expanded-action-parent">Muay Thai Fight</div>
+            </div>
+            <div class="expanded-action-result">
+              <span class="expanded-action-value font-display">4</span>
+              <span class="expanded-action-target">/ 5 runs</span>
+              <span class="result-badge hit">HIT</span>
+            </div>
+          </div>
+          <div class="expanded-action">
+            <div>
+              <div class="expanded-action-name font-display">Shadow boxing drills</div>
+              <div class="expanded-action-parent">Muay Thai Fight</div>
+            </div>
+            <div class="expanded-action-result">
+              <span class="expanded-action-value font-display">4</span>
+              <span class="expanded-action-target">/ 4 sessions</span>
+              <span class="result-badge hit">HIT</span>
+            </div>
+          </div>
+          <div class="expanded-action">
+            <div>
+              <div class="expanded-action-name font-display">Read 30 min</div>
+              <div class="expanded-action-parent">Read 12 Books</div>
+            </div>
+            <div class="expanded-action-result">
+              <span class="expanded-action-value font-display">3</span>
+              <span class="expanded-action-target">/ 5 days</span>
+              <span class="result-badge miss">MISS</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="expanded-note">
+          <div class="expanded-note-label">Notes</div>
+          Great week for training. Missed a couple reading days because of the work trip to Berlin — not worried about it. Shadow boxing finally clicking after the coaching adjustment.
+        </div>
+      </div>
+
+      <!-- Collapsed history cards -->
+      <div class="history-month-label">February 2026</div>
+
+      <div class="history-card">
+        <div class="history-card-top">
+          <div>
+            <span class="history-type-badge weekly font-display">Weekly</span>
+            <div class="history-period font-display">Feb 15 – Feb 21</div>
+            <div class="history-date">Reviewed Feb 22</div>
+          </div>
+          <div class="score-ring">
+            <svg viewBox="0 0 48 48">
+              <circle cx="24" cy="24" r="20" fill="none" stroke="#EEECE9" stroke-width="3"/>
+              <circle cx="24" cy="24" r="20" fill="none" stroke="var(--accent)" stroke-width="3"
+                stroke-dasharray="125.6" stroke-dashoffset="62.8" stroke-linecap="round"
+                transform="rotate(-90 24 24)"/>
+            </svg>
+            <span class="font-display score-val">2/4</span>
+          </div>
+        </div>
+        <div class="history-stats">
+          <div class="history-stat"><div class="stat-dot green"></div><span class="stat-label">2 targets hit</span></div>
+          <div class="history-stat"><div class="stat-dot orange"></div><span class="stat-label">2 missed</span></div>
+        </div>
+        <div class="history-note-preview">
+          Knee was bothering me mid-week so I swapped running for swimming twice. Still counts as cardio in my book.
+        </div>
+      </div>
+
+      <div class="history-card">
+        <div class="history-card-top">
+          <div>
+            <span class="history-type-badge weekly font-display">Weekly</span>
+            <div class="history-period font-display">Feb 8 – Feb 14</div>
+            <div class="history-date">Reviewed Feb 15</div>
+          </div>
+          <div class="score-ring">
+            <svg viewBox="0 0 48 48">
+              <circle cx="24" cy="24" r="20" fill="none" stroke="#EEECE9" stroke-width="3"/>
+              <circle cx="24" cy="24" r="20" fill="none" stroke="var(--green)" stroke-width="3"
+                stroke-dasharray="125.6" stroke-dashoffset="0" stroke-linecap="round"
+                transform="rotate(-90 24 24)"/>
+            </svg>
+            <span class="font-display score-val" style="color:var(--green)">4/4</span>
+          </div>
+        </div>
+        <div class="history-stats">
+          <div class="history-stat"><div class="stat-dot green"></div><span class="stat-label">4 targets hit</span></div>
+        </div>
+        <div class="history-note-preview">
+          Perfect week. Everything clicked.
+        </div>
+      </div>
+
+      <div class="history-card">
+        <div class="history-card-top">
+          <div>
+            <span class="history-type-badge monthly font-display">Monthly</span>
+            <div class="history-period font-display">January 2026</div>
+            <div class="history-date">Reviewed Feb 1</div>
+          </div>
+          <div class="score-ring">
+            <svg viewBox="0 0 48 48">
+              <circle cx="24" cy="24" r="20" fill="none" stroke="#EEECE9" stroke-width="3"/>
+              <circle cx="24" cy="24" r="20" fill="none" stroke="var(--accent)" stroke-width="3"
+                stroke-dasharray="125.6" stroke-dashoffset="62.8" stroke-linecap="round"
+                transform="rotate(-90 24 24)"/>
+            </svg>
+            <span class="font-display score-val">1/2</span>
+          </div>
+        </div>
+        <div class="history-stats">
+          <div class="history-stat"><div class="stat-dot green"></div><span class="stat-label">1 target hit</span></div>
+          <div class="history-stat"><div class="stat-dot orange"></div><span class="stat-label">1 missed</span></div>
+        </div>
+        <div class="history-note-preview">
+          Finished one book (Meditations). Missed sparring target because gym was closed for renovation the last two weeks.
+        </div>
+      </div>
+
+      <div class="history-month-label">January 2026</div>
+
+      <div class="history-card">
+        <div class="history-card-top">
+          <div>
+            <span class="history-type-badge weekly font-display">Weekly</span>
+            <div class="history-period font-display">Jan 27 – Feb 2</div>
+            <div class="history-date">Reviewed Feb 3</div>
+          </div>
+          <div class="score-ring">
+            <svg viewBox="0 0 48 48">
+              <circle cx="24" cy="24" r="20" fill="none" stroke="#EEECE9" stroke-width="3"/>
+              <circle cx="24" cy="24" r="20" fill="none" stroke="var(--accent)" stroke-width="3"
+                stroke-dasharray="125.6" stroke-dashoffset="94.2" stroke-linecap="round"
+                transform="rotate(-90 24 24)"/>
+            </svg>
+            <span class="font-display score-val">1/4</span>
+          </div>
+        </div>
+        <div class="history-stats">
+          <div class="history-stat"><div class="stat-dot green"></div><span class="stat-label">1 hit</span></div>
+          <div class="history-stat"><div class="stat-dot orange"></div><span class="stat-label">3 missed</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

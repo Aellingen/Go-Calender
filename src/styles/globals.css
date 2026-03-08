@@ -1,0 +1,216 @@
+@import "tailwindcss";
+
+/* ── Go Calendar — Soft Bloom Design System ── */
+
+:root {
+  /* Backgrounds */
+  --bg:            #F6F4F0;
+  --bg-warm:       #FBF9F6;
+  --surface:       #FFFFFF;
+  --card:          #FFFFFF;
+  --card-hover:    #FEFEFE;
+  --sidebar-bg:    #FAF8F5;
+
+  /* Borders */
+  --border:        #EBE8E2;
+  --border-hover:  #D9D4CB;
+  --border-focus:  #A78BFA;
+
+  /* Text */
+  --text:          #1C1917;
+  --text-secondary:#57534E;
+  --text-muted:    #A8A29E;
+  --text-dim:      #D6D3D1;
+
+  /* Accent — Indigo/Violet (modern, clean) */
+  --accent:        #7C3AED;
+  --accent-light:  #A78BFA;
+  --accent-softer: #EDE9FE;
+  --accent-bg:     #F5F3FF;
+  --accent-text:   #5B21B6;
+
+  /* Warm accent — for streaks, momentum, energy */
+  --warm:          #F97316;
+  --warm-light:    #FB923C;
+  --warm-softer:   #FFF7ED;
+  --warm-bg:       #FFFAF5;
+
+  /* Success */
+  --success:       #10B981;
+  --success-light: #34D399;
+  --success-softer:#D1FAE5;
+  --success-bg:    #ECFDF5;
+
+  /* Danger */
+  --danger:        #EF4444;
+  --danger-light:  #FCA5A5;
+  --danger-softer: #FEE2E2;
+
+  /* Slider / Progress */
+  --slider-bg:     #E7E5E4;
+  --slider-fill:   #7C3AED;
+  --slider-new:    rgba(124,58,237,0.25);
+
+  /* Shadows — colored, not gray */
+  --shadow-sm:     0 1px 3px rgba(28,25,23,0.04), 0 1px 2px rgba(28,25,23,0.03);
+  --shadow:        0 4px 12px rgba(28,25,23,0.06), 0 1px 3px rgba(28,25,23,0.04);
+  --shadow-md:     0 8px 24px rgba(28,25,23,0.08), 0 2px 8px rgba(28,25,23,0.04);
+  --shadow-lg:     0 20px 60px rgba(28,25,23,0.10), 0 4px 16px rgba(28,25,23,0.06);
+  --shadow-accent: 0 4px 16px rgba(124,58,237,0.15), 0 1px 4px rgba(124,58,237,0.08);
+  --shadow-warm:   0 4px 16px rgba(249,115,22,0.12);
+
+  /* Radii — bubbly */
+  --r-sm:    10px;
+  --r-md:    14px;
+  --r-lg:    18px;
+  --r-xl:    22px;
+  --r-2xl:   28px;
+  --r-full:  9999px;
+
+  /* Transitions */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* ── Animations ── */
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes modalIn {
+  from { opacity: 0; transform: scale(0.97) translateY(8px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
+
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+@keyframes shimmer {
+  from { background-position: -200% 0; }
+  to   { background-position: 200% 0; }
+}
+
+@keyframes ringFill {
+  from { stroke-dashoffset: 100; }
+}
+
+.animate-slide-up {
+  animation: slideUp 250ms var(--ease-out);
+}
+
+.animate-scale-in {
+  animation: scaleIn 200ms var(--ease-out);
+}
+
+.animate-modal-in {
+  animation: modalIn 250ms var(--ease-out);
+}
+
+/* ── Base ── */
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: 'Nunito', system-ui, -apple-system, sans-serif;
+  font-weight: 400;
+  font-optical-sizing: auto;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  line-height: 1.5;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+/* ── Display Font ── */
+
+.font-display {
+  font-family: 'Bricolage Grotesque', system-ui, sans-serif;
+  font-weight: 700;
+  font-style: normal;
+}
+
+/* ── Scrollbar ── */
+
+::-webkit-scrollbar {
+  width: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: var(--r-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--border-hover);
+}
+
+/* ── Focus ── */
+
+*:focus-visible {
+  outline: 2px solid var(--accent-light);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ── Selection ── */
+
+::selection {
+  background: var(--accent-softer);
+  color: var(--accent-text);
+}
+
+/* ── Utility ── */
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Skeleton loading */
+.skeleton {
+  background: linear-gradient(90deg, var(--border) 25%, var(--bg) 50%, var(--border) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite ease-in-out;
+  border-radius: var(--r-md);
+}

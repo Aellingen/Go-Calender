@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Go Calendar — Weekly Review Panel v2</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@700;800&family=Nunito:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F6F4F0;
+    --card: #FFFFFF;
+    --accent: #7C3AED;
+    --accent-light: #A78BFA;
+    --accent-softer: #EDE9FE;
+    --orange: #F97316;
+    --orange-soft: #FFF7ED;
+    --green: #10B981;
+    --green-soft: #ECFDF5;
+    --red: #EF4444;
+    --text-primary: #1C1917;
+    --text-secondary: #57534E;
+    --text-muted: #A8A29E;
+    --text-dim: #D6D3D1;
+    --border: #E7E5E4;
+    --shadow-deep: 0 8px 32px rgba(120,100,80,0.12), 0 16px 48px rgba(120,100,80,0.08);
+    --shadow-purple: 0 4px 14px rgba(124,58,237,0.25);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Nunito', sans-serif; background: rgba(28,25,23,0.35);
+    min-height: 100vh; display: flex; align-items: center; justify-content: center;
+    padding: 40px 20px; backdrop-filter: blur(4px);
+  }
+  .font-display { font-family: 'Bricolage Grotesque', sans-serif; }
+
+  .review-panel {
+    background: var(--card); border-radius: 28px; width: 100%; max-width: 780px;
+    max-height: 85vh; overflow-y: auto; box-shadow: var(--shadow-deep);
+    animation: panelIn 0.3s ease;
+  }
+  @keyframes panelIn {
+    from { opacity: 0; transform: scale(0.97) translateY(8px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+  }
+
+  /* Header */
+  .review-header {
+    padding: 28px 32px 20px; border-bottom: 1px solid var(--border);
+    display: flex; justify-content: space-between; align-items: flex-start;
+  }
+  .review-period-label {
+    font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;
+    color: var(--accent); background: var(--accent-softer);
+    display: inline-block; padding: 3px 10px; border-radius: 9999px; margin-bottom: 8px;
+  }
+  .review-title { font-size: 24px; font-weight: 800; letter-spacing: -0.5px; }
+  .review-subtitle { font-size: 13.5px; color: var(--text-muted); margin-top: 4px; }
+  .close-btn {
+    width: 36px; height: 36px; border-radius: 12px; border: none;
+    background: #F5F5F4; cursor: pointer; display: flex;
+    align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .close-btn:hover { background: #EEECE9; }
+  .close-btn svg { width: 16px; height: 16px; stroke: var(--text-secondary); stroke-width: 2; }
+
+  .review-body { padding: 24px 32px 32px; }
+  .section-label {
+    font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 1px; color: var(--text-muted); margin-bottom: 12px;
+  }
+
+  /* Action review card */
+  .action-review-list { display: flex; flex-direction: column; gap: 14px; }
+
+  .action-review-card {
+    background: #FAFAF9; border: 1px solid var(--border); border-radius: 18px;
+    padding: 18px 20px; transition: border-color 0.2s;
+  }
+  .action-review-card.dirty { border-color: var(--accent-light); background: #FDFCFB; }
+
+  .action-top-row {
+    display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px;
+  }
+  .action-name { font-size: 14px; font-weight: 800; letter-spacing: -0.2px; }
+  .action-parent { font-size: 11.5px; color: var(--text-muted); font-weight: 600; margin-top: 2px; }
+  .status-dot {
+    width: 8px; height: 8px; border-radius: 50%; margin-left: 6px;
+    display: inline-block; vertical-align: middle;
+  }
+  .status-dot.hit { background: var(--green); box-shadow: 0 0 6px rgba(16,185,129,0.4); }
+  .status-dot.miss { background: var(--orange); box-shadow: 0 0 6px rgba(249,115,22,0.3); }
+
+  /* Value display — right side of top row */
+  .value-display { text-align: right; }
+  .value-current {
+    font-size: 24px; font-weight: 800; letter-spacing: -0.5px;
+    transition: color 0.2s;
+  }
+  .value-current.at-logged { color: var(--text-primary); }
+  .value-current.edited { color: var(--accent); }
+  .value-of-target { font-size: 12px; color: var(--text-muted); font-weight: 600; }
+
+  /* Slider row */
+  .slider-row {
+    display: flex; align-items: center; gap: 10px;
+  }
+
+  /* Stepper button */
+  .stepper-btn {
+    width: 30px; height: 30px; border-radius: 9999px; border: 1.5px solid var(--border);
+    background: white; cursor: pointer; display: flex;
+    align-items: center; justify-content: center;
+    transition: all 0.15s; flex-shrink: 0;
+  }
+  .stepper-btn:hover { border-color: var(--accent); background: var(--accent-softer); }
+  .stepper-btn:active { transform: scale(0.92); }
+  .stepper-btn svg { width: 12px; height: 12px; stroke: var(--text-secondary); stroke-width: 2.5; }
+  .stepper-btn:hover svg { stroke: var(--accent); }
+
+  /* Slider track */
+  .slider-track-container {
+    flex: 1; height: 30px; display: flex; align-items: center;
+    position: relative; cursor: pointer;
+  }
+  .slider-track {
+    width: 100%; height: 8px; border-radius: 9999px;
+    background: #EEECE9; position: relative; overflow: hidden;
+  }
+
+  /* Logged fill — the original value, solid */
+  .slider-fill-logged {
+    position: absolute; top: 0; left: 0; height: 100%; border-radius: 9999px;
+    background: linear-gradient(90deg, var(--accent), var(--accent-light));
+    transition: width 0.2s;
+  }
+
+  /* Delta fill — between logged and current, semi-transparent */
+  .slider-fill-delta {
+    position: absolute; top: 0; height: 100%;
+    background: rgba(124, 58, 237, 0.25);
+    transition: left 0.2s, width 0.2s;
+  }
+  .slider-fill-delta.increase {
+    background: rgba(124, 58, 237, 0.25);
+    border-radius: 0 9999px 9999px 0;
+  }
+  .slider-fill-delta.decrease {
+    background: rgba(239, 68, 68, 0.2);
+    border-radius: 9999px 0 0 9999px;
+  }
+
+  /* Thumb */
+  .slider-thumb {
+    position: absolute; top: 50%; transform: translate(-50%, -50%);
+    width: 18px; height: 18px; border-radius: 50%;
+    background: white; border: 2.5px solid var(--accent);
+    box-shadow: 0 1px 4px rgba(124,58,237,0.2);
+    cursor: grab; transition: box-shadow 0.15s;
+    z-index: 2;
+  }
+  .slider-thumb:hover { box-shadow: 0 2px 8px rgba(124,58,237,0.35); }
+  .slider-thumb.dirty { border-color: var(--accent); }
+
+  /* Logged marker — small tick showing where the original value was */
+  .logged-marker {
+    position: absolute; top: -4px; width: 2px; height: 16px;
+    background: var(--accent); border-radius: 1px; opacity: 0.4;
+    transform: translateX(-50%); z-index: 1;
+    transition: left 0.2s;
+  }
+
+  /* Monthly context */
+  .monthly-context {
+    margin-top: 28px; background: var(--accent-softer);
+    border-radius: 16px; padding: 16px 20px; border: 1px solid #DDD6FE;
+  }
+  .monthly-context-title {
+    font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 1px; color: var(--accent); margin-bottom: 10px;
+  }
+  .monthly-item {
+    display: flex; justify-content: space-between; align-items: center; padding: 6px 0;
+  }
+  .monthly-item:not(:last-child) { border-bottom: 1px solid rgba(124,58,237,0.1); }
+  .monthly-item-name { font-size: 13px; font-weight: 700; }
+  .monthly-item-progress { font-size: 12px; font-weight: 600; color: var(--accent); }
+  .monthly-item-note { font-size: 11px; color: var(--text-secondary); margin-top: 1px; }
+
+  .divider { height: 1px; background: var(--border); margin: 24px 0; }
+
+  /* Notes */
+  .notes-section { margin-top: 28px; }
+  .notes-textarea {
+    width: 100%; min-height: 100px; border-radius: 16px;
+    border: 2px solid var(--border); background: #FAFAF9;
+    padding: 16px; font-family: 'Nunito', sans-serif;
+    font-size: 14px; color: var(--text-primary);
+    resize: vertical; outline: none; line-height: 1.6;
+  }
+  .notes-textarea:focus { border-color: var(--accent); background: white; }
+  .notes-textarea::placeholder { color: var(--text-dim); }
+
+  /* Footer */
+  .review-footer {
+    padding: 20px 32px 28px; display: flex;
+    justify-content: space-between; align-items: center;
+    border-top: 1px solid var(--border); margin-top: 8px;
+  }
+  .btn-later {
+    font-family: 'Nunito', sans-serif; font-size: 13px; font-weight: 600;
+    color: var(--text-muted); background: none; border: none; cursor: pointer; padding: 8px 16px;
+  }
+  .btn-complete {
+    font-family: 'Nunito', sans-serif; font-size: 14px; font-weight: 700;
+    color: white; background: var(--accent); border: none; cursor: pointer;
+    padding: 12px 28px; border-radius: 9999px; box-shadow: var(--shadow-purple); transition: all 0.2s;
+  }
+  .btn-complete:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(124,58,237,0.35); }
+  .review-footer-info { font-size: 11px; color: var(--text-dim); font-weight: 600; }
+</style>
+</head>
+<body>
+
+<div class="review-panel">
+  <!-- Header -->
+  <div class="review-header">
+    <div>
+      <div class="review-period-label font-display">Weekly Review</div>
+      <div class="review-title font-display">Mar 1 – Mar 7</div>
+      <div class="review-subtitle">Review your performance and seal the week.</div>
+    </div>
+    <button class="close-btn">
+      <svg viewBox="0 0 24 24" fill="none"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
+    </button>
+  </div>
+
+  <div class="review-body">
+    <div class="section-label">Weekly goals — final values</div>
+
+    <div class="action-review-list">
+
+      <!-- Action 1: Hit target, no edit needed -->
+      <div class="action-review-card" id="card1">
+        <div class="action-top-row">
+          <div>
+            <div class="action-name font-display">Attend practice <span class="status-dot hit"></span></div>
+            <div class="action-parent">Muay Thai Fight</div>
+          </div>
+          <div class="value-display">
+            <div class="value-current at-logged font-display" id="val1">5</div>
+            <div class="value-of-target">of 5 sessions</div>
+          </div>
+        </div>
+        <div class="slider-row">
+          <button class="stepper-btn" onclick="adjust(1,-1)">
+            <svg viewBox="0 0 12 12"><line x1="2" y1="6" x2="10" y2="6"/></svg>
+          </button>
+          <div class="slider-track-container" id="track1" data-target="5" data-logged="5" data-current="5">
+            <div class="slider-track">
+              <div class="slider-fill-logged" id="fill1-logged"></div>
+              <div class="slider-fill-delta" id="fill1-delta"></div>
+            </div>
+            <div class="slider-thumb" id="thumb1"></div>
+          </div>
+          <button class="stepper-btn" onclick="adjust(1,1)">
+            <svg viewBox="0 0 12 12"><line x1="2" y1="6" x2="10" y2="6"/><line x1="6" y1="2" x2="6" y2="10"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Action 2: Missed — user might want to correct up -->
+      <div class="action-review-card" id="card2">
+        <div class="action-top-row">
+          <div>
+            <div class="action-name font-display">Run 5K intervals <span class="status-dot miss"></span></div>
+            <div class="action-parent">Muay Thai Fight</div>
+          </div>
+          <div class="value-display">
+            <div class="value-current at-logged font-display" id="val2">3</div>
+            <div class="value-of-target">of 5 runs</div>
+          </div>
+        </div>
+        <div class="slider-row">
+          <button class="stepper-btn" onclick="adjust(2,-1)">
+            <svg viewBox="0 0 12 12"><line x1="2" y1="6" x2="10" y2="6"/></svg>
+          </button>
+          <div class="slider-track-container" id="track2" data-target="5" data-logged="3" data-current="3">
+            <div class="slider-track">
+              <div class="slider-fill-logged" id="fill2-logged"></div>
+              <div class="slider-fill-delta" id="fill2-delta"></div>
+            </div>
+            <div class="logged-marker" id="marker2"></div>
+            <div class="slider-thumb" id="thumb2"></div>
+          </div>
+          <button class="stepper-btn" onclick="adjust(2,1)">
+            <svg viewBox="0 0 12 12"><line x1="2" y1="6" x2="10" y2="6"/><line x1="6" y1="2" x2="6" y2="10"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Action 3: Missed badly -->
+      <div class="action-review-card" id="card3">
+        <div class="action-top-row">
+          <div>
+            <div class="action-name font-display">Shadow boxing drills <span class="status-dot miss"></span></div>
+            <div class="action-parent">Muay Thai Fight</div>
+          </div>
+          <div class="value-display">
+            <div class="value-current at-logged font-display" id="val3">1</div>
+            <div class="value-of-target">of 4 sessions</div>
+          </div>
+        </div>
+        <div class="slider-row">
+          <button class="stepper-btn" onclick="adjust(3,-1)">
+            <svg viewBox="0 0 12 12"><line x1="2" y1="6" x2="10" y2="6"/></svg>
+          </button>
+          <div class="slider-track-container" id="track3" data-target="4" data-logged="1" data-current="1">
+            <div class="slider-track">
+              <div class="slider-fill-logged" id="fill3-logged"></div>
+              <div class="slider-fill-delta" id="fill3-delta"></div>
+            </div>
+            <div class="logged-marker" id="marker3"></div>
+            <div class="slider-thumb" id="thumb3"></div>
+          </div>
+          <button class="stepper-btn" onclick="adjust(3,1)">
+            <svg viewBox="0 0 12 12"><line x1="2" y1="6" x2="10" y2="6"/><line x1="6" y1="2" x2="6" y2="10"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Action 4: Exceeded target -->
+      <div class="action-review-card" id="card4">
+        <div class="action-top-row">
+          <div>
+            <div class="action-name font-display">Read 30 min <span class="status-dot hit"></span></div>
+            <div class="action-parent">Read 12 Books</div>
+          </div>
+          <div class="value-display">
+            <div class="value-current at-logged font-display" id="val4">7</div>
+            <div class="value-of-target">of 5 days</div>
+          </div>
+        </div>
+        <div class="slider-row">
+          <button class="stepper-btn" onclick="adjust(4,-1)">
+            <svg viewBox="0 0 12 12"><line x1="2" y1="6" x2="10" y2="6"/></svg>
+          </button>
+          <div class="slider-track-container" id="track4" data-target="7" data-logged="7" data-current="7">
+            <div class="slider-track">
+              <div class="slider-fill-logged" id="fill4-logged"></div>
+              <div class="slider-fill-delta" id="fill4-delta"></div>
+            </div>
+            <div class="slider-thumb" id="thumb4"></div>
+          </div>
+          <button class="stepper-btn" onclick="adjust(4,1)">
+            <svg viewBox="0 0 12 12"><line x1="2" y1="6" x2="10" y2="6"/><line x1="6" y1="2" x2="6" y2="10"/></svg>
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Monthly context -->
+    <div class="monthly-context">
+      <div class="monthly-context-title font-display">Monthly goals — progress so far</div>
+      <div class="monthly-item">
+        <div>
+          <div class="monthly-item-name">Books completed</div>
+          <div class="monthly-item-note">Read 12 Books · Target: 1 this month</div>
+        </div>
+        <div class="monthly-item-progress font-display">0 / 1</div>
+      </div>
+      <div class="monthly-item">
+        <div>
+          <div class="monthly-item-name">Sparring rounds</div>
+          <div class="monthly-item-note">Muay Thai Fight · Target: 8 this month</div>
+        </div>
+        <div class="monthly-item-progress font-display">3 / 8</div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="notes-section">
+      <div class="section-label">Notes on this week</div>
+      <textarea class="notes-textarea" placeholder="How did the week go? Anything worth remembering?"></textarea>
+    </div>
+  </div>
+
+  <div class="review-footer">
+    <button class="btn-later">Later</button>
+    <div class="review-footer-info">This will seal values and start a new period</div>
+    <button class="btn-complete">Complete Review</button>
+  </div>
+</div>
+
+<script>
+// Slider logic
+const sliders = {};
+
+function initSlider(id) {
+  const track = document.getElementById(`track${id}`);
+  const target = parseInt(track.dataset.target);
+  const logged = parseInt(track.dataset.logged);
+  let current = parseInt(track.dataset.current);
+
+  sliders[id] = { target, logged, current };
+  render(id);
+
+  // Click on track
+  track.addEventListener('click', (e) => {
+    const rect = track.querySelector('.slider-track').getBoundingClientRect();
+    const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    sliders[id].current = Math.round(pct * target);
+    render(id);
+  });
+
+  // Drag
+  const thumb = document.getElementById(`thumb${id}`);
+  let dragging = false;
+
+  thumb.addEventListener('mousedown', (e) => {
+    dragging = true;
+    e.preventDefault();
+  });
+
+  document.addEventListener('mousemove', (e) => {
+    if (!dragging) return;
+    const rect = track.querySelector('.slider-track').getBoundingClientRect();
+    const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    sliders[id].current = Math.round(pct * target);
+    render(id);
+  });
+
+  document.addEventListener('mouseup', () => { dragging = false; });
+}
+
+function adjust(id, delta) {
+  const s = sliders[id];
+  s.current = Math.max(0, Math.min(s.target, s.current + delta));
+  render(id);
+}
+
+function render(id) {
+  const s = sliders[id];
+  const { target, logged, current } = s;
+  const isDirty = current !== logged;
+
+  // Value display
+  const valEl = document.getElementById(`val${id}`);
+  valEl.textContent = current;
+  valEl.className = `value-current font-display ${isDirty ? 'edited' : 'at-logged'}`;
+
+  // Card dirty state
+  const card = document.getElementById(`card${id}`);
+  card.className = `action-review-card${isDirty ? ' dirty' : ''}`;
+
+  // Thumb position
+  const thumb = document.getElementById(`thumb${id}`);
+  const pct = (current / target) * 100;
+  thumb.style.left = `${pct}%`;
+  thumb.className = `slider-thumb${isDirty ? ' dirty' : ''}`;
+
+  // Logged fill
+  const loggedFill = document.getElementById(`fill${id}-logged`);
+  const loggedPct = (Math.min(logged, current) / target) * 100;
+  if (current >= logged) {
+    loggedFill.style.width = `${(logged / target) * 100}%`;
+  } else {
+    loggedFill.style.width = `${pct}%`;
+  }
+
+  // Delta fill
+  const deltaFill = document.getElementById(`fill${id}-delta`);
+  if (current > logged) {
+    const leftPct = (logged / target) * 100;
+    const widthPct = ((current - logged) / target) * 100;
+    deltaFill.style.left = `${leftPct}%`;
+    deltaFill.style.width = `${widthPct}%`;
+    deltaFill.className = 'slider-fill-delta increase';
+    deltaFill.style.display = 'block';
+  } else if (current < logged) {
+    const leftPct = (current / target) * 100;
+    const widthPct = ((logged - current) / target) * 100;
+    deltaFill.style.left = `${leftPct}%`;
+    deltaFill.style.width = `${widthPct}%`;
+    deltaFill.className = 'slider-fill-delta decrease';
+    deltaFill.style.display = 'block';
+  } else {
+    deltaFill.style.width = '0%';
+    deltaFill.style.display = 'none';
+  }
+
+  // Logged marker (only show when dirty)
+  const marker = document.getElementById(`marker${id}`);
+  if (marker) {
+    if (isDirty) {
+      marker.style.display = 'block';
+      marker.style.left = `${(logged / target) * 100}%`;
+    } else {
+      marker.style.display = 'none';
+    }
+  }
+
+  // Status dot
+  const dotEl = card.querySelector('.status-dot');
+  if (dotEl) {
+    if (current >= s.target) {
+      dotEl.className = 'status-dot hit';
+    } else {
+      dotEl.className = 'status-dot miss';
+    }
+  }
+}
+
+// Init all sliders
+[1, 2, 3, 4].forEach(initSlider);
+</script>
+
+</body>
+</html>
