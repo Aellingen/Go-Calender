@@ -116,15 +116,24 @@ export default function DatePicker({ value, onChange, placeholder = 'Select date
             })}
           </div>
 
-          {value && (
-            <button type="button" onClick={() => { onChange(''); setOpen(false); }} style={{
-              marginTop: 10, width: '100%', padding: '6px 0',
-              background: 'none', border: 'none',
-              fontSize: 11.5, fontWeight: 600, color: 'var(--text-muted)', cursor: 'pointer',
-            }}>
-              Clear date
-            </button>
-          )}
+          <label style={{
+            display: 'flex', alignItems: 'center', gap: 8,
+            marginTop: 12, padding: '6px 0', cursor: 'pointer',
+            fontSize: 12.5, fontWeight: 600, color: 'var(--text-muted)',
+          }}>
+            <input
+              type="checkbox"
+              checked={!value}
+              onChange={(e) => {
+                if (e.target.checked) {
+                  onChange('');
+                  setOpen(false);
+                }
+              }}
+              style={{ accentColor: 'var(--accent)', width: 15, height: 15, cursor: 'pointer' }}
+            />
+            Open-ended (no due date)
+          </label>
         </div>
       )}
     </div>

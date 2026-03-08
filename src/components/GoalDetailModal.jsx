@@ -300,18 +300,64 @@ function SettingsPanel({ goal, updateGoal, onClose }) {
         <button onClick={handleSave} disabled={saving} style={primaryBtnStyle(saving)}>
           {saving ? 'Saving...' : 'Save Changes'}
         </button>
-        {!deleteConfirm ? (
-          <button onClick={() => setDeleteConfirm(true)} style={dangerOutlineBtnStyle}>
-            Delete Goal
-          </button>
-        ) : (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: 12, color: 'var(--danger)', fontWeight: 600 }}>Are you sure?</span>
-            <button onClick={handleDelete} style={dangerBtnStyle}>Yes, delete</button>
-            <button onClick={() => setDeleteConfirm(false)} style={cancelBtnStyle}>Cancel</button>
-          </div>
-        )}
+        <button onClick={() => setDeleteConfirm(true)} style={dangerOutlineBtnStyle}>
+          Delete Goal
+        </button>
       </div>
+
+      {deleteConfirm && (
+        <div
+          onClick={(e) => { if (e.target === e.currentTarget) setDeleteConfirm(false); }}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 100,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: 'rgba(28,25,23,0.4)', backdropFilter: 'blur(4px)',
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="animate-modal-in"
+            style={{
+              background: 'var(--surface)', border: '1px solid var(--border)',
+              borderRadius: 'var(--r-2xl)', padding: '28px 32px',
+              width: 340, textAlign: 'center', boxShadow: 'var(--shadow-lg)',
+            }}
+          >
+            <div style={{
+              width: 44, height: 44, borderRadius: 'var(--r-lg)',
+              background: 'var(--danger-light, #fef2f2)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              margin: '0 auto 14px',
+            }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--danger, #dc2626)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+              </svg>
+            </div>
+            <h3 className="font-display" style={{ fontSize: 18, color: 'var(--text)', margin: '0 0 6px' }}>
+              Delete goal?
+            </h3>
+            <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '0 0 22px', lineHeight: 1.5 }}>
+              This will permanently delete <strong>{goal.name}</strong> and all its actions and logs.
+            </p>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
+              <button onClick={() => setDeleteConfirm(false)} style={{
+                padding: '9px 22px', borderRadius: 'var(--r-full)', fontSize: 13,
+                fontWeight: 700, color: 'var(--text-muted)', background: 'var(--bg)',
+                border: '1px solid var(--border)', cursor: 'pointer',
+              }}>
+                Cancel
+              </button>
+              <button onClick={handleDelete} style={{
+                padding: '9px 22px', borderRadius: 'var(--r-full)', fontSize: 13,
+                fontWeight: 700, color: '#fff', background: 'var(--danger, #dc2626)',
+                border: 'none', cursor: 'pointer',
+              }}>
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
