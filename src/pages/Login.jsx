@@ -32,6 +32,12 @@ export default function Login() {
     setSubmitting(true);
 
     try {
+      if (password.length < 6) {
+        setError('Password must be at least 6 characters');
+        setSubmitting(false);
+        return;
+      }
+
       if (mode === 'signup' && password !== confirmPassword) {
         setError('Passwords do not match');
         setSubmitting(false);
@@ -136,7 +142,6 @@ export default function Login() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            minLength={6}
             style={inputStyle}
           />
           {mode === 'signup' && (
@@ -146,8 +151,7 @@ export default function Login() {
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               required
-              minLength={6}
-              style={inputStyle}
+                style={inputStyle}
             />
           )}
           <button
