@@ -69,7 +69,12 @@ export default function Login() {
         if (signInError) throw signInError;
       }
     } catch (err) {
-      setError(err.message);
+      const msg = err.message;
+      if (msg?.toLowerCase().includes('user already registered')) {
+        setError('An account with this email already exists');
+      } else {
+        setError(msg);
+      }
     } finally {
       setSubmitting(false);
     }
