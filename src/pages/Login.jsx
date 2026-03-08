@@ -8,6 +8,7 @@ export default function Login() {
   const [mode, setMode] = useState('login'); // 'login' | 'signup'
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [name, setName] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -31,6 +32,12 @@ export default function Login() {
     setSubmitting(true);
 
     try {
+      if (mode === 'signup' && password !== confirmPassword) {
+        setError('Passwords do not match');
+        setSubmitting(false);
+        return;
+      }
+
       if (mode === 'signup') {
         const { data, error: signUpError } = await supabase.auth.signUp({
           email,
@@ -132,6 +139,17 @@ export default function Login() {
             minLength={6}
             style={inputStyle}
           />
+          {mode === 'signup' && (
+            <input
+              type="password"
+              placeholder="Confirm password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              required
+              minLength={6}
+              style={inputStyle}
+            />
+          )}
           <button
             type="submit"
             disabled={submitting}
@@ -154,7 +172,7 @@ export default function Login() {
           {mode === 'login' ? "Don't have an account? " : 'Already have an account? '}
           <button
             type="button"
-            onClick={() => { setMode(mode === 'login' ? 'signup' : 'login'); setError(''); }}
+            onClick={() => { setMode(mode === 'login' ? 'signup' : 'login'); setError(''); setConfirmPassword(''); }}
             style={{
               background: 'none', border: 'none', color: 'var(--accent)',
               fontWeight: 700, cursor: 'pointer', fontSize: 13,
