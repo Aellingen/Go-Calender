@@ -21,7 +21,8 @@ import ToastContainer from '../components/Toast';
 function SortableGoalCard({ goal, goals, onClick }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: goal.id });
   const style = {
-    transform: CSS.Transform.toString(transform),
+    transform: CSS.Translate.toString(transform),
+    transition: isDragging ? undefined : 'transform 200ms ease',
     opacity: isDragging ? 0.4 : 1,
   };
   return (
