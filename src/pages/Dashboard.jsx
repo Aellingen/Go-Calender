@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from 'react';
 import { format } from 'date-fns';
-import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragOverlay } from '@dnd-kit/core';
+import { DndContext, closestCorners, PointerSensor, useSensor, useSensors, DragOverlay } from '@dnd-kit/core';
 import { SortableContext, rectSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { useGoals, useReorderGoals } from '../hooks/useGoals';
@@ -232,7 +232,7 @@ export default function Dashboard() {
                 </p>
               </div>
             ) : (
-              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+              <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
                 <SortableContext items={goalIds} strategy={rectSortingStrategy}>
                   <div style={{
                     display: 'grid',
