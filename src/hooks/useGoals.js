@@ -157,8 +157,5 @@ export function useReorderGoals() {
       }
       toast.error('Failed to reorder goals');
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['goals'] });
-    },
   });
 }
