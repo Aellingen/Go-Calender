@@ -18,11 +18,11 @@ import ReviewButton from '../components/ReviewButton';
 import ReviewPanel from '../components/ReviewPanel';
 import ToastContainer from '../components/Toast';
 
-function SortableGoalCard({ goal, goals, onClick }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: goal.id });
+function SortableGoalCard({ goal, goals, onClick, isSorting }) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useSortable({ id: goal.id });
   const style = {
     transform: CSS.Translate.toString(transform),
-    transition: isDragging ? undefined : 'transform 200ms ease',
+    transition: isSorting && !isDragging ? 'transform 200ms ease' : undefined,
     opacity: isDragging ? 0.4 : 1,
   };
   return (
@@ -244,6 +244,7 @@ export default function Dashboard() {
                         key={g.id}
                         goal={g}
                         goals={goals}
+                        isSorting={!!activeId}
                         onClick={() => useUIStore.getState().openGoalDetail(g)}
                       />
                     ))}
