@@ -141,8 +141,8 @@ export function useReorderGoals() {
       if (!res.ok || json.error) throw new Error(json.error || 'Failed to reorder goals');
       return json.data;
     },
-    onMutate: async (orderedIds) => {
-      await queryClient.cancelQueries({ queryKey: ['goals'] });
+    onMutate: (orderedIds) => {
+      queryClient.cancelQueries({ queryKey: ['goals'] });
       const previous = queryClient.getQueryData(['goals', 'active']);
       queryClient.setQueryData(['goals', 'active'], (old) => {
         if (!old) return old;
