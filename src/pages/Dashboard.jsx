@@ -246,7 +246,7 @@ export default function Dashboard() {
                     ))}
                   </div>
                 </SortableContext>
-                <DragOverlay>
+                <DragOverlay dropAnimation={null}>
                   {activeGoal ? (
                     <div style={{
                       transform: 'scale(0.95) rotate(2deg)',
