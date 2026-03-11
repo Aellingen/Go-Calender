@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from 'react';
 import { format } from 'date-fns';
-import { DndContext, closestCorners, PointerSensor, useSensor, useSensors, DragOverlay } from '@dnd-kit/core';
+import { DndContext, PointerSensor, useSensor, useSensors, DragOverlay } from '@dnd-kit/core';
 import { SortableContext, rectSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { useGoals, useReorderGoals } from '../hooks/useGoals';
@@ -17,6 +17,31 @@ import LateralLinkPopover from '../components/LateralLinkPopover';
 import ReviewButton from '../components/ReviewButton';
 import ReviewPanel from '../components/ReviewPanel';
 import ToastContainer from '../components/Toast';
+
+// Custom collision detection that uses the original (initial) droppable rects,
+// not the logically-shifted ones, to prevent the feedback loop that causes jerk.
+function stableClosestCenter({ droppableRects, droppableContainers, active }) {
+  if (!active || !active.rect.current.translated) return [];
+  const activeCenter = {
+    x: active.rect.current.translated.left + active.rect.current.translated.width / 2,
+    y: active.rect.current.translated.top + active.rect.current.translated.height / 2,
+  };
+  let closest = null;
+  let minDist = Infinity;
+  for (const container of droppableContainers) {
+    if (container.disabled) continue;
+    const rect = container.rect.current;
+    if (!rect) continue;
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    const dist = (activeCenter.x - cx) ** 2 + (activeCenter.y - cy) ** 2;
+    if (dist < minDist) {
+      minDist = dist;
+      closest = container;
+    }
+  }
+  return closest ? [{ id: closest.id }] : [];
+}
 
 function SortableGoalCard({ goal, goals, onClick, isSorting }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useSortable({ id: goal.id });
@@ -232,7 +257,7 @@ export default function Dashboard() {
                 </p>
               </div>
             ) : (
-              <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+              <DndContext sensors={sensors} collisionDetection={stableClosestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
                 <SortableContext items={goalIds} strategy={rectSortingStrategy}>
                   <div style={{
                     display: 'grid',
