@@ -53,13 +53,16 @@ export default function Dashboard() {
   }
 
   function handleDragEnd(event) {
-    setActiveId(null);
     const { active, over } = event;
-    if (!over || active.id === over.id) return;
+    if (!over || active.id === over.id) {
+      setActiveId(null);
+      return;
+    }
     const oldIndex = goals.findIndex((g) => g.id === active.id);
     const newIndex = goals.findIndex((g) => g.id === over.id);
     const newOrder = arrayMove(goals, oldIndex, newIndex);
     reorder.mutate(newOrder.map((g) => g.id));
+    setActiveId(null);
   }
 
   // Keyboard shortcuts
