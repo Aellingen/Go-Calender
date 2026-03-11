@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useUIStore } from '../store/ui';
-import { useCreateAction } from '../hooks/useActions';
+import { useCreateAction, useActions } from '../hooks/useActions';
 import DatePicker from './DatePicker';
 
 export default function CreateActionModal() {
@@ -33,7 +33,7 @@ function ModalBackdrop({ onClose, children }) {
         className="animate-modal-in"
         style={{
           background: 'var(--surface)', border: '1px solid var(--border)',
-          borderRadius: 'var(--r-2xl)', width: 400, maxHeight: 560,
+          borderRadius: 'var(--r-2xl)', width: 400, maxHeight: 640,
           display: 'flex', flexDirection: 'column', boxShadow: 'var(--shadow-lg)',
         }}
         onClick={(e) => e.stopPropagation()}
@@ -47,26 +47,38 @@ function ModalBackdrop({ onClose, children }) {
 function FormContent({ goal, onClose }) {
   const nameRef = useRef(null);
   const createAction = useCreateAction();
+  const { data: allActions = [] } = useActions();
   const [name, setName] = useState('');
+  const [mode, setMode] = useState('counted');
   const [target, setTarget] = useState('');
   const [unit, setUnit] = useState('');
   const [periodType, setPeriodType] = useState('');
   const [dueDate, setDueDate] = useState('');
+  const [lateralLinkTargetId, setLateralLinkTargetId] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => { nameRef.current?.focus(); }, []);
+  useEffect(() => {
+    if (periodType === 'weekly' || periodType === 'monthly') setDueDate('');
+  }, [periodType]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!name.trim()) return;
     setSubmitting(true);
     setError('');
-    const data = { name: name.trim(), parentGoalId: goal.id };
-    if (target !== '') data.target = Number(target);
-    if (unit.trim()) data.unit = unit.trim();
+    const data = { name: name.trim(), parentGoalId: goal.id, mode };
+    if (mode === 'counted') {
+      if (target !== '') data.target = Number(target);
+      if (unit.trim()) data.unit = unit.trim();
+    }
     if (periodType) data.periodType = periodType;
-    if (dueDate) data.dueDate = dueDate;
+    if (dueDate && dueDate !== 'open-ended') data.dueDate = dueDate;
+    if (lateralLinkTargetId) {
+      data.lateralLinkTargetId = lateralLinkTargetId;
+      data.lateralLinkType = 'value';
+    }
     try { await createAction.mutateAsync(data); onClose(); }
     catch (err) { setError(err.message); setSubmitting(false); }
   };
@@ -101,27 +113,60 @@ function FormContent({ goal, onClose }) {
         <Field label="Name *">
           <input ref={nameRef} type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Morning jog" style={inputStyle} />
         </Field>
+        <Field label="Mode">
+          <div style={{ display: 'flex', gap: 0, borderRadius: 'var(--r-md)', overflow: 'hidden', border: '1px solid var(--border)' }}>
+            {['simple', 'counted'].map((m) => (
+              <button key={m} type="button" onClick={() => setMode(m)} style={{
+                flex: 1, padding: '9px 0', fontSize: 12.5, fontWeight: 700,
+                border: 'none', cursor: 'pointer',
+                background: mode === m ? 'var(--accent)' : 'var(--bg)',
+                color: mode === m ? '#fff' : 'var(--text-muted)',
+                transition: 'all 0.15s',
+                textTransform: 'capitalize',
+              }}>
+                {m}
+              </button>
+            ))}
+          </div>
+        </Field>
+        {mode === 'counted' && (
+          <div style={{ display: 'flex', gap: 12 }}>
+            <Field label="Target" style={{ flex: 1 }}>
+              <input type="number" step="any" value={target} onChange={(e) => setTarget(e.target.value)} placeholder="e.g. 5" style={inputStyle} />
+            </Field>
+            <Field label="Unit" style={{ flex: 1 }}>
+              <input type="text" value={unit} onChange={(e) => setUnit(e.target.value)} placeholder="e.g. sessions" style={inputStyle} />
+            </Field>
+          </div>
+        )}
         <div style={{ display: 'flex', gap: 12 }}>
-          <Field label="Target" style={{ flex: 1 }}>
-            <input type="number" step="any" value={target} onChange={(e) => setTarget(e.target.value)} placeholder="e.g. 5" style={inputStyle} />
-          </Field>
-          <Field label="Unit" style={{ flex: 1 }}>
-            <input type="text" value={unit} onChange={(e) => setUnit(e.target.value)} placeholder="e.g. sessions" style={inputStyle} />
-          </Field>
-        </div>
-        <div style={{ display: 'flex', gap: 12 }}>
-          <Field label="Period" style={{ flex: 1 }}>
+          <Field label="Recurring" style={{ flex: 1 }}>
             <select value={periodType} onChange={(e) => setPeriodType(e.target.value)} style={{ ...inputStyle, appearance: 'none' }}>
               <option value="">None</option>
               <option value="weekly">Weekly</option>
               <option value="monthly">Monthly</option>
-              <option value="custom">Custom</option>
             </select>
           </Field>
           <Field label="Due date" style={{ flex: 1 }}>
-            <DatePicker value={dueDate} onChange={setDueDate} placeholder="Pick a date" />
+            {periodType === 'weekly' || periodType === 'monthly' ? (
+              <div style={{ ...inputStyle, color: 'var(--text-muted)', fontSize: 13, display: 'flex', alignItems: 'center' }}>
+                {periodType === 'weekly' ? 'Resets every Sunday' : 'Resets at end of month'}
+              </div>
+            ) : (
+              <DatePicker value={dueDate} onChange={setDueDate} />
+            )}
           </Field>
         </div>
+        {mode === 'counted' && (
+          <Field label="Feeds into">
+            <select value={lateralLinkTargetId} onChange={(e) => setLateralLinkTargetId(e.target.value)} style={{ ...inputStyle, appearance: 'none' }}>
+              <option value="">None</option>
+              {allActions.filter((a) => a.status === 'active' && a.mode === 'counted').map((a) => (
+                <option key={a.id} value={a.id}>{a.name}</option>
+              ))}
+            </select>
+          </Field>
+        )}
         {error && <p style={{ fontSize: 12, color: 'var(--danger)', fontWeight: 600, margin: 0 }}>{error}</p>}
       </div>
 

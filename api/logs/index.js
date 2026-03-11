@@ -1,7 +1,7 @@
 import { getAuthUser, sendError } from '../_lib/auth-middleware.js';
 import { toCamelLog } from '../_lib/transform.js';
 import { createLogSchema } from '../_lib/validators.js';
-import { handleLateralLinks } from '../_lib/aggregation.js';
+import { handleLateralLinks, handleGoalLink } from '../_lib/aggregation.js';
 
 export default async function handler(req, res) {
   try {
@@ -53,6 +53,15 @@ export default async function handler(req, res) {
           await handleLateralLinks(supabase, parsed.data.sourceId, parsed.data.value, user.workspace_id);
         } catch (linkErr) {
           console.error('Lateral link error:', linkErr.message);
+        }
+      }
+
+      // Handle goal links if source is a goal
+      if (parsed.data.sourceType === 'goal') {
+        try {
+          await handleGoalLink(supabase, user.workspace_id, parsed.data.sourceId, parsed.data.value, parsed.data.logDate);
+        } catch (linkErr) {
+          console.error('Goal link error:', linkErr.message);
         }
       }
 

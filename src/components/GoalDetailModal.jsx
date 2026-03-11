@@ -2,11 +2,12 @@ import { useState, useEffect } from 'react';
 import { useActions } from '../hooks/useActions';
 import { useUpdateGoal, useDeleteGoal } from '../hooks/useGoals';
 import { useUIStore } from '../store/ui';
-import { formatDueDate } from '../lib/dates';
+import { formatDueDate, getPeriodLabel } from '../lib/dates';
 import ActionSliderCard from './ActionSliderCard';
+import ActionCheckCard from './ActionCheckCard';
 import DatePicker from './DatePicker';
 
-export default function GoalDetailModal({ goal, onClose }) {
+export default function GoalDetailModal({ goal, goals = [], onClose }) {
   const { data: actions = [] } = useActions(goal.id);
   const updateGoal = useUpdateGoal();
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -17,7 +18,7 @@ export default function GoalDetailModal({ goal, onClose }) {
     return () => window.removeEventListener('keydown', handleKey);
   }, [onClose]);
 
-  const isNumerical = goal.mode === 'numerical';
+  const isCounted = goal.mode === 'counted';
   const activeActions = actions.filter((a) => (a.currentValue ?? 0) > 0).length;
 
   return (
@@ -65,9 +66,21 @@ export default function GoalDetailModal({ goal, onClose }) {
                   borderRadius: 'var(--r-full)', padding: '3px 12px',
                   fontSize: 11, fontWeight: 700,
                 }}>
-                  {isNumerical ? 'Numerical' : 'Checkbox'}
+                  {isCounted ? 'Counted' : 'Simple'}
                 </span>
-                {goal.dueDate && (
+                {goal.periodType && (
+                  <span style={{
+                    background: 'var(--accent-softer)', color: 'var(--accent)',
+                    borderRadius: 'var(--r-full)', padding: '3px 12px',
+                    fontSize: 11, fontWeight: 700,
+                  }}>
+                    {goal.periodType === 'weekly' ? 'Weekly' : 'Monthly'}
+                    {goal.currentPeriodStart && goal.periodEnd
+                      ? ` · ${getPeriodLabel(goal.currentPeriodStart, goal.periodEnd)}`
+                      : ''}
+                  </span>
+                )}
+                {goal.dueDate && !goal.periodType && (
                   <span style={{
                     background: 'var(--bg)', color: 'var(--text-secondary)',
                     borderRadius: 'var(--r-full)', padding: '3px 12px',
@@ -90,7 +103,7 @@ export default function GoalDetailModal({ goal, onClose }) {
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginLeft: 20 }}>
-              {isNumerical ? (
+              {isCounted ? (
                 <div style={{ textAlign: 'right' }}>
                   <span className="font-display" style={{
                     fontSize: 32, color: 'var(--accent)', lineHeight: 1,
@@ -150,7 +163,7 @@ export default function GoalDetailModal({ goal, onClose }) {
 
         {/* Settings panel */}
         {settingsOpen && (
-          <SettingsPanel goal={goal} updateGoal={updateGoal} onClose={onClose} />
+          <SettingsPanel goal={goal} goals={goals} updateGoal={updateGoal} onClose={onClose} />
         )}
 
         {/* Body: actions grid */}
@@ -183,7 +196,9 @@ export default function GoalDetailModal({ goal, onClose }) {
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               {actions.map((action) => (
-                <ActionSliderCard key={action.id} action={action} />
+                action.mode === 'simple'
+                  ? <ActionCheckCard key={action.id} action={action} />
+                  : <ActionSliderCard key={action.id} action={action} />
               ))}
             </div>
           )}
@@ -221,14 +236,17 @@ export default function GoalDetailModal({ goal, onClose }) {
   );
 }
 
-function SettingsPanel({ goal, updateGoal, onClose }) {
+function SettingsPanel({ goal, goals = [], updateGoal, onClose }) {
   const deleteGoal = useDeleteGoal();
   const [name, setName] = useState(goal.name || '');
   const [description, setDescription] = useState(goal.description || '');
   const [dueDate, setDueDate] = useState(goal.dueDate || '');
-  const [mode, setMode] = useState(goal.mode || 'checkbox');
+  const [periodType, setPeriodType] = useState(goal.periodType || '');
+  const [mode, setMode] = useState(goal.mode || 'simple');
   const [target, setTarget] = useState(goal.target != null ? String(goal.target) : '');
   const [unit, setUnit] = useState(goal.unit || '');
+  const [linkedGoalId, setLinkedGoalId] = useState(goal.linkedGoalId || '');
+  const [color, setColor] = useState(goal.color || '');
   const [saving, setSaving] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
 
@@ -237,14 +255,22 @@ function SettingsPanel({ goal, updateGoal, onClose }) {
     const data = {};
     if (name.trim() && name.trim() !== goal.name) data.name = name.trim();
     if (description.trim() !== (goal.description || '')) data.description = description.trim();
-    if (dueDate !== (goal.dueDate || '')) data.dueDate = dueDate || null;
-    if (mode !== (goal.mode || 'checkbox')) data.mode = mode;
-    if (mode === 'numerical') {
+    const effectiveDueDate = dueDate === 'open-ended' ? '' : dueDate;
+    if (effectiveDueDate !== (goal.dueDate || '')) data.dueDate = effectiveDueDate || null;
+    if (periodType !== (goal.periodType || '')) {
+      data.periodType = periodType || null;
+      data.recurrenceMode = periodType ? 'auto' : 'none';
+    }
+    if (color !== (goal.color || '')) data.color = color || null;
+    if (mode !== (goal.mode || 'simple')) data.mode = mode;
+    if (mode === 'counted') {
       if (target !== (goal.target != null ? String(goal.target) : '')) data.target = target ? Number(target) : null;
       if (unit !== (goal.unit || '')) data.unit = unit;
+      if (linkedGoalId !== (goal.linkedGoalId || '')) data.linkedGoalId = linkedGoalId || null;
     } else {
       if (goal.target != null) data.target = null;
       if (goal.unit) data.unit = '';
+      if (goal.linkedGoalId) data.linkedGoalId = null;
     }
     if (Object.keys(data).length > 0) {
       try { await updateGoal.mutateAsync({ goalId: goal.id, ...data }); } catch {}
@@ -276,22 +302,44 @@ function SettingsPanel({ goal, updateGoal, onClose }) {
         <Field label="Description">
           <input value={description} onChange={(e) => setDescription(e.target.value)} style={inputStyle} placeholder="Optional" />
         </Field>
+        <Field label="Recurring">
+          <select value={periodType} onChange={(e) => { setPeriodType(e.target.value); if (e.target.value) setDueDate(''); }} style={{ ...inputStyle, appearance: 'none' }}>
+            <option value="">None</option>
+            <option value="weekly">Weekly</option>
+            <option value="monthly">Monthly</option>
+          </select>
+        </Field>
         <Field label="Due Date">
-          <DatePicker value={dueDate} onChange={setDueDate} placeholder="Pick a date" />
+          {periodType ? (
+            <div style={{ ...inputStyle, color: 'var(--text-muted)', fontSize: 13, display: 'flex', alignItems: 'center' }}>
+              {periodType === 'weekly' ? 'Resets every Sunday' : 'Resets at end of month'}
+            </div>
+          ) : (
+            <DatePicker value={dueDate} onChange={setDueDate} />
+          )}
         </Field>
         <Field label="Mode">
           <select value={mode} onChange={(e) => setMode(e.target.value)} style={{ ...inputStyle, appearance: 'none' }}>
-            <option value="checkbox">Checkbox</option>
-            <option value="numerical">Numerical</option>
+            <option value="simple">Simple</option>
+            <option value="counted">Counted</option>
           </select>
         </Field>
-        {mode === 'numerical' && (
+        <ColorPicker value={color} onChange={setColor} />
+        {mode === 'counted' && (
           <>
             <Field label="Target">
               <input type="number" value={target} onChange={(e) => setTarget(e.target.value)} style={inputStyle} />
             </Field>
             <Field label="Unit">
               <input value={unit} onChange={(e) => setUnit(e.target.value)} style={inputStyle} placeholder="e.g. km" />
+            </Field>
+            <Field label="Feeds into">
+              <select value={linkedGoalId} onChange={(e) => setLinkedGoalId(e.target.value)} style={{ ...inputStyle, appearance: 'none' }}>
+                <option value="">None</option>
+                {goals.filter((g) => g.mode === 'counted' && g.id !== goal.id).map((g) => (
+                  <option key={g.id} value={g.id}>{g.name}</option>
+                ))}
+              </select>
             </Field>
           </>
         )}
@@ -358,6 +406,44 @@ function SettingsPanel({ goal, updateGoal, onClose }) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+const COLOR_OPTIONS = [
+  { key: 'violet', solid: 'var(--accent)' },
+  { key: 'orange', solid: 'var(--warm)' },
+  { key: 'green', solid: 'var(--success)' },
+  { key: 'red', solid: 'var(--danger)' },
+];
+
+function ColorPicker({ value, onChange }) {
+  return (
+    <div>
+      <label style={{
+        display: 'block', fontSize: 10, fontWeight: 700,
+        textTransform: 'uppercase', letterSpacing: '0.06em',
+        color: 'var(--text-muted)', marginBottom: 5,
+      }}>
+        Color
+      </label>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        {COLOR_OPTIONS.map(({ key, solid }) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => onChange(value === key ? '' : key)}
+            style={{
+              width: 22, height: 22, borderRadius: '50%',
+              background: solid, border: 'none', cursor: 'pointer',
+              outline: value === key ? `2px solid ${solid}` : 'none',
+              outlineOffset: 2,
+              transition: 'outline 0.15s',
+              flexShrink: 0,
+            }}
+          />
+        ))}
+      </div>
     </div>
   );
 }

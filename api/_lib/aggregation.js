@@ -43,6 +43,52 @@ export async function handleLateralLinks(supabase, sourceActionId, value, worksp
 }
 
 /**
+ * After a goal log write, check if the goal has a linked_goal_id.
+ * If yes, write a secondary log entry to the linked goal.
+ */
+export async function handleGoalLink(supabase, workspaceId, goalId, value, logDate) {
+  const { data: goal } = await supabase
+    .from('goals')
+    .select('linked_goal_id')
+    .eq('id', goalId)
+    .single();
+
+  if (!goal?.linked_goal_id) return;
+  if (value === 0) return;
+
+  const { data: target } = await supabase
+    .from('goals')
+    .select('current_period_start, period_end')
+    .eq('id', goal.linked_goal_id)
+    .single();
+
+  const periodLabel = buildPeriodLabel(
+    target?.current_period_start,
+    target?.period_end,
+  );
+
+  await supabase.from('logs').insert({
+    workspace_id: workspaceId,
+    source_type: 'goal',
+    source_id: goal.linked_goal_id,
+    log_date: logDate,
+    value,
+    entry_type: 'numeric',
+    period_label: periodLabel,
+    is_closing_entry: false,
+  });
+}
+
+/**
+ * When a goal log is edited, propagate the delta to the linked goal.
+ */
+export async function handleGoalLinkEdit(supabase, workspaceId, goalId, oldValue, newValue, logDate) {
+  const delta = newValue - oldValue;
+  if (delta === 0) return;
+  await handleGoalLink(supabase, workspaceId, goalId, delta, logDate);
+}
+
+/**
  * When a log entry is edited, compute the delta and apply it to any lateral target.
  */
 export async function handleLateralLinkEdit(supabase, sourceActionId, oldValue, newValue, workspaceId) {

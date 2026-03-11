@@ -105,9 +105,10 @@ export function useCreateGoal() {
         name: newGoal.name,
         description: newGoal.description ?? '',
         dueDate: newGoal.dueDate ?? null,
-        mode: newGoal.mode ?? 'checkbox',
+        mode: newGoal.mode ?? 'simple',
         target: newGoal.target ?? null,
         unit: newGoal.unit ?? null,
+        color: newGoal.color ?? '',
         current: 0,
         currentValue: 0,
         status: 'active',
@@ -122,6 +123,41 @@ export function useCreateGoal() {
       toast.error('Failed to create goal');
     },
     onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['goals'] });
+    },
+  });
+}
+
+export function useReorderGoals() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (orderedIds) => {
+      const res = await apiFetch('/api/goals', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderedIds }),
+      });
+      const json = await res.json();
+      if (!res.ok || json.error) throw new Error(json.error || 'Failed to reorder goals');
+      return json.data;
+    },
+    onMutate: async (orderedIds) => {
+      await queryClient.cancelQueries({ queryKey: ['goals'] });
+      const previous = queryClient.getQueryData(['goals', 'active']);
+      queryClient.setQueryData(['goals', 'active'], (old) => {
+        if (!old) return old;
+        const map = Object.fromEntries(old.map((g) => [g.id, g]));
+        return orderedIds.map((id) => map[id]).filter(Boolean);
+      });
+      return { previous };
+    },
+    onError: (err, _vars, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(['goals', 'active'], context.previous);
+      }
+      toast.error('Failed to reorder goals');
+    },
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['goals'] });
     },
   });

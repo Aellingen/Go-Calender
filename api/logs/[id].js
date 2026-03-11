@@ -1,7 +1,7 @@
 import { getAuthUser, sendError } from '../_lib/auth-middleware.js';
 import { toCamelLog } from '../_lib/transform.js';
 import { updateLogSchema } from '../_lib/validators.js';
-import { handleLateralLinkEdit } from '../_lib/aggregation.js';
+import { handleLateralLinkEdit, handleGoalLinkEdit } from '../_lib/aggregation.js';
 
 export default async function handler(req, res) {
   try {
@@ -26,10 +26,10 @@ export default async function handler(req, res) {
         return res.status(400).json({ data: null, error: parsed.error.issues[0].message });
       }
 
-      // Fetch old log for lateral link delta
+      // Fetch old log for link delta
       const { data: oldLog } = await supabase
         .from('logs')
-        .select('value, source_type, source_id')
+        .select('value, source_type, source_id, log_date')
         .eq('id', id)
         .eq('workspace_id', user.workspace_id)
         .single();
@@ -58,6 +58,22 @@ export default async function handler(req, res) {
           );
         } catch (linkErr) {
           console.error('Lateral link edit error:', linkErr.message);
+        }
+      }
+
+      // Handle goal link delta if source is a goal
+      if (oldLog.source_type === 'goal') {
+        try {
+          await handleGoalLinkEdit(
+            supabase,
+            user.workspace_id,
+            oldLog.source_id,
+            Number(oldLog.value),
+            parsed.data.value,
+            oldLog.log_date,
+          );
+        } catch (linkErr) {
+          console.error('Goal link edit error:', linkErr.message);
         }
       }
 

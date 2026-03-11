@@ -52,10 +52,18 @@ function MomentumDots({ activeCount, totalCount }) {
   );
 }
 
-export default function GoalCard({ goal, onClick }) {
+const GOAL_COLOR_MAP = {
+  violet: { border: 'var(--accent)', tint: 'rgba(124, 58, 237, 0.10)' },
+  orange: { border: 'var(--warm)',   tint: 'rgba(249, 115, 22, 0.10)' },
+  green:  { border: 'var(--success)', tint: 'rgba(16, 185, 129, 0.10)' },
+  red:    { border: 'var(--danger)',  tint: 'rgba(239, 68, 68, 0.10)' },
+};
+
+export default function GoalCard({ goal, goals = [], onClick, dragHandleListeners, dragHandleAttributes }) {
   const { data: actions = [] } = useActions(goal.id);
   const isOptimistic = goal._optimistic;
-  const isNumerical = goal.mode === 'numerical';
+  const isNumerical = goal.mode === 'counted';
+  const colorInfo = goal.color ? GOAL_COLOR_MAP[goal.color] : null;
 
   const { progress, activeActions, totalActions, momentumLabel, progressLabel } = useMemo(() => {
     let prog = 0;
@@ -106,8 +114,11 @@ export default function GoalCard({ goal, onClick }) {
       onClick={isOptimistic ? undefined : onClick}
       className="animate-scale-in"
       style={{
-        background: 'var(--card)',
+        background: colorInfo
+          ? `linear-gradient(135deg, ${colorInfo.tint} 0%, transparent 60%), var(--card)`
+          : 'var(--card)',
         border: '1px solid var(--border)',
+        borderLeft: colorInfo ? `5px solid ${colorInfo.border}` : undefined,
         borderRadius: 'var(--r-xl)',
         padding: '22px 24px 20px',
         cursor: isOptimistic ? 'default' : 'pointer',
@@ -119,27 +130,49 @@ export default function GoalCard({ goal, onClick }) {
       }}
       onMouseEnter={(e) => {
         if (isOptimistic) return;
-        e.currentTarget.style.borderColor = 'var(--accent-light)';
-        e.currentTarget.style.transform = 'translateY(-3px)';
-        e.currentTarget.style.boxShadow = 'var(--shadow-md)';
+        const s = e.currentTarget.style;
+        s.borderTopColor = 'var(--accent-light)';
+        s.borderRightColor = 'var(--accent-light)';
+        s.borderBottomColor = 'var(--accent-light)';
+        if (!colorInfo) s.borderLeftColor = 'var(--accent-light)';
+        s.transform = 'translateY(-3px)';
+        s.boxShadow = 'var(--shadow-md)';
       }}
       onMouseLeave={(e) => {
         if (isOptimistic) return;
-        e.currentTarget.style.borderColor = 'var(--border)';
-        e.currentTarget.style.transform = 'translateY(0)';
-        e.currentTarget.style.boxShadow = 'none';
+        const s = e.currentTarget.style;
+        s.borderTopColor = 'var(--border)';
+        s.borderRightColor = 'var(--border)';
+        s.borderBottomColor = 'var(--border)';
+        if (!colorInfo) s.borderLeftColor = 'var(--border)';
+        s.transform = 'translateY(0)';
+        s.boxShadow = 'none';
       }}
     >
-      {/* Subtle gradient accent at top */}
-      <div style={{
-        position: 'absolute', top: 0, left: 0, right: 0, height: 3,
-        background: progress >= 100
-          ? 'linear-gradient(90deg, var(--success), var(--success-light))'
-          : progress > 0
-            ? 'linear-gradient(90deg, var(--accent), var(--accent-light))'
-            : 'var(--border)',
-        borderRadius: 'var(--r-xl) var(--r-xl) 0 0',
-      }} />
+      {/* Drag handle */}
+      {dragHandleListeners && (
+        <div
+          {...dragHandleListeners}
+          {...dragHandleAttributes}
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            position: 'absolute', top: 8, right: 8,
+            padding: 4, cursor: 'grab',
+            opacity: 0.35, transition: 'opacity 0.2s',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            borderRadius: 'var(--r-sm)',
+            zIndex: 2,
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.opacity = '1'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.35'; }}
+        >
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="var(--text-muted)">
+            <circle cx="5" cy="3" r="1.5"/><circle cx="11" cy="3" r="1.5"/>
+            <circle cx="5" cy="8" r="1.5"/><circle cx="11" cy="8" r="1.5"/>
+            <circle cx="5" cy="13" r="1.5"/><circle cx="11" cy="13" r="1.5"/>
+          </svg>
+        </div>
+      )}
 
       {/* Top row: name + ring */}
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16 }}>
@@ -186,7 +219,16 @@ export default function GoalCard({ goal, onClick }) {
         <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-secondary)' }}>
           {progressLabel}
         </span>
-        {goal.dueDate && (
+        {goal.periodType && (
+          <span style={{
+            fontSize: 11, fontWeight: 700, color: 'var(--accent)',
+            padding: '2px 8px', borderRadius: 'var(--r-full)',
+            background: 'var(--accent-softer)',
+          }}>
+            {goal.periodType === 'weekly' ? 'Weekly' : 'Monthly'}
+          </span>
+        )}
+        {goal.dueDate && !goal.periodType && (
           <span style={{
             fontSize: 11, fontWeight: 600, color: 'var(--text-muted)',
             padding: '2px 8px', borderRadius: 'var(--r-full)',
@@ -212,6 +254,16 @@ export default function GoalCard({ goal, onClick }) {
           transition: 'width 0.5s var(--ease-out)',
         }} />
       </div>
+
+      {/* Feeds into link */}
+      {goal.linkedGoalId && (() => {
+        const linkedGoal = goals.find((g) => g.id === goal.linkedGoalId);
+        return linkedGoal ? (
+          <div style={{ marginTop: 10, fontSize: 11.5, color: 'var(--text-muted)', fontWeight: 500 }}>
+            → Feeds into {linkedGoal.name}
+          </div>
+        ) : null;
+      })()}
 
       {/* Bottom: Momentum section */}
       <div style={{
@@ -241,7 +293,7 @@ export default function GoalCard({ goal, onClick }) {
               <span
                 key={action.id}
                 style={{
-                  background: isComplete ? 'var(--success-softer)' : 'var(--bg)',
+                  background: isComplete ? 'var(--success-softer)' : 'rgba(255,255,255,0.85)',
                   border: `1px solid ${isComplete ? 'var(--success-light)' : 'var(--border)'}`,
                   borderRadius: 'var(--r-full)',
                   padding: '3px 10px',

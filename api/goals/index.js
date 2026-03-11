@@ -1,6 +1,6 @@
 import { getAuthUser, sendError } from '../_lib/auth-middleware.js';
 import { toCamelGoal, toSnakeGoal } from '../_lib/transform.js';
-import { createGoalSchema } from '../_lib/validators.js';
+import { createGoalSchema, reorderGoalsSchema } from '../_lib/validators.js';
 import { attachCurrentValues } from '../_lib/aggregation.js';
 
 export default async function handler(req, res) {
@@ -15,6 +15,7 @@ export default async function handler(req, res) {
         .select('*')
         .eq('workspace_id', user.workspace_id)
         .eq('status', status)
+        .order('position', { ascending: true, nullsFirst: false })
         .order('due_date', { ascending: true, nullsFirst: false });
 
       if (error) return res.status(500).json({ data: null, error: error.message });
@@ -30,9 +31,20 @@ export default async function handler(req, res) {
         return res.status(400).json({ data: null, error: parsed.error.issues[0].message });
       }
 
+      // Auto-assign position at end
+      const { data: maxRow } = await supabase
+        .from('goals')
+        .select('position')
+        .eq('workspace_id', user.workspace_id)
+        .eq('status', 'active')
+        .order('position', { ascending: false, nullsFirst: false })
+        .limit(1)
+        .single();
+
       const insert = {
         workspace_id: user.workspace_id,
         ...toSnakeGoal(parsed.data),
+        position: (maxRow?.position ?? 0) + 1,
       };
 
       const { data: row, error } = await supabase
@@ -44,6 +56,25 @@ export default async function handler(req, res) {
       if (error) return res.status(500).json({ data: null, error: error.message });
 
       return res.status(201).json({ data: toCamelGoal(row), error: null });
+    }
+
+    if (req.method === 'PATCH') {
+      const parsed = reorderGoalsSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ data: null, error: parsed.error.issues[0].message });
+      }
+
+      const { orderedIds } = parsed.data;
+      for (let i = 0; i < orderedIds.length; i++) {
+        const { error } = await supabase
+          .from('goals')
+          .update({ position: i + 1 })
+          .eq('id', orderedIds[i])
+          .eq('workspace_id', user.workspace_id);
+        if (error) return res.status(500).json({ data: null, error: error.message });
+      }
+
+      return res.status(200).json({ data: { reordered: orderedIds.length }, error: null });
     }
 
     return res.status(405).json({ data: null, error: 'Method not allowed' });

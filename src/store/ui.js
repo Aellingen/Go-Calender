@@ -2,7 +2,6 @@ import { create } from 'zustand';
 
 export const useUIStore = create((set) => ({
   expandedGoals: new Set(),
-  calendarOpen: false,
   showCompleted: false,
 
   // Log modal state
@@ -75,9 +74,6 @@ export const useUIStore = create((set) => ({
       else next.add(goalId);
       return { expandedGoals: next };
     }),
-
-  toggleCalendar: () =>
-    set((state) => ({ calendarOpen: !state.calendarOpen })),
 
   toggleShowCompleted: () =>
     set((state) => ({ showCompleted: !state.showCompleted })),

@@ -1,13 +1,16 @@
 import { useState, useEffect } from 'react';
-import { useUpdateAction } from '../hooks/useActions';
+import { useUpdateAction, useActions } from '../hooks/useActions';
 import DatePicker from './DatePicker';
 
 export default function ActionEditModal({ action, onClose }) {
   const updateAction = useUpdateAction();
+  const { data: allActions = [] } = useActions();
   const [name, setName] = useState(action.name || '');
+  const [mode, setMode] = useState(action.mode || 'counted');
   const [target, setTarget] = useState(action.target != null ? String(action.target) : '');
   const [dueDate, setDueDate] = useState(action.dueDate || '');
   const [periodType, setPeriodType] = useState(action.periodType || '');
+  const [lateralLinkTargetId, setLateralLinkTargetId] = useState(action.lateralLinkTargetId || '');
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -16,13 +19,27 @@ export default function ActionEditModal({ action, onClose }) {
     return () => window.removeEventListener('keydown', handleKey);
   }, [onClose]);
 
+  useEffect(() => {
+    if (periodType === 'weekly' || periodType === 'monthly') setDueDate('');
+  }, [periodType]);
+
   const handleSave = async () => {
     setSaving(true);
     const data = {};
     if (name.trim() && name.trim() !== action.name) data.name = name.trim();
-    if (target !== (action.target != null ? String(action.target) : '')) data.target = target ? Number(target) : null;
-    if (dueDate !== (action.dueDate || '')) data.dueDate = dueDate || null;
+    if (mode !== (action.mode || 'counted')) data.mode = mode;
+    if (mode === 'counted') {
+      if (target !== (action.target != null ? String(action.target) : '')) data.target = target ? Number(target) : null;
+    } else {
+      if (action.target != null) data.target = null;
+    }
+    const effectiveDueDate = dueDate === 'open-ended' ? '' : dueDate;
+    if (effectiveDueDate !== (action.dueDate || '')) data.dueDate = effectiveDueDate || null;
     if (periodType !== (action.periodType || '')) data.periodType = periodType || null;
+    if (lateralLinkTargetId !== (action.lateralLinkTargetId || '')) {
+      data.lateralLinkTargetId = lateralLinkTargetId || null;
+      data.lateralLinkType = lateralLinkTargetId ? 'value' : null;
+    }
     if (Object.keys(data).length > 0) {
       try { await updateAction.mutateAsync({ actionId: action.id, ...data }); } catch {}
     }
@@ -67,20 +84,53 @@ export default function ActionEditModal({ action, onClose }) {
           <Field label="Name">
             <input value={name} onChange={(e) => setName(e.target.value)} style={inputStyle} />
           </Field>
-          <Field label="Target">
-            <input type="number" value={target} onChange={(e) => setTarget(e.target.value)} style={inputStyle} />
+          <Field label="Mode">
+            <div style={{ display: 'flex', gap: 0, borderRadius: 'var(--r-md)', overflow: 'hidden', border: '1px solid var(--border)' }}>
+              {['simple', 'counted'].map((m) => (
+                <button key={m} type="button" onClick={() => setMode(m)} style={{
+                  flex: 1, padding: '9px 0', fontSize: 12.5, fontWeight: 700,
+                  border: 'none', cursor: 'pointer',
+                  background: mode === m ? 'var(--accent)' : 'var(--bg)',
+                  color: mode === m ? '#fff' : 'var(--text-muted)',
+                  transition: 'all 0.15s',
+                  textTransform: 'capitalize',
+                }}>
+                  {m}
+                </button>
+              ))}
+            </div>
           </Field>
+          {mode === 'counted' && (
+            <Field label="Target">
+              <input type="number" value={target} onChange={(e) => setTarget(e.target.value)} style={inputStyle} />
+            </Field>
+          )}
           <Field label="Due Date">
-            <DatePicker value={dueDate} onChange={setDueDate} placeholder="Pick a date" />
+            {periodType === 'weekly' || periodType === 'monthly' ? (
+              <div style={{ ...inputStyle, color: 'var(--text-muted)', fontSize: 13, display: 'flex', alignItems: 'center' }}>
+                {periodType === 'weekly' ? 'Resets every Sunday' : 'Resets at end of month'}
+              </div>
+            ) : (
+              <DatePicker value={dueDate} onChange={setDueDate} />
+            )}
           </Field>
-          <Field label="Period">
+          <Field label="Recurring">
             <select value={periodType} onChange={(e) => setPeriodType(e.target.value)} style={{ ...inputStyle, appearance: 'none' }}>
               <option value="">None</option>
               <option value="weekly">Weekly</option>
               <option value="monthly">Monthly</option>
-              <option value="custom">Custom</option>
             </select>
           </Field>
+          {mode === 'counted' && (
+            <Field label="Feeds into">
+              <select value={lateralLinkTargetId} onChange={(e) => setLateralLinkTargetId(e.target.value)} style={{ ...inputStyle, appearance: 'none' }}>
+                <option value="">None</option>
+                {allActions.filter((a) => a.status === 'active' && a.mode === 'counted' && a.id !== action.id).map((a) => (
+                  <option key={a.id} value={a.id}>{a.name}</option>
+                ))}
+              </select>
+            </Field>
+          )}
 
           <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
             <button onClick={handleSave} disabled={saving} style={{

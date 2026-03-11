@@ -52,7 +52,7 @@ function ModalContent({ item, onClose, inputRef }) {
   const [editingLogId, setEditingLogId] = useState(null);
   const [editValue, setEditValue] = useState('');
 
-  const isBoolean = item.unit?.toLowerCase() === 'boolean';
+  const isBoolean = item.mode === 'simple';
   const { data: logs = [], isLoading: logsLoading } = useLogs(item.id, item.sourceType);
   const createLog = useCreateLog();
   const updateLog = useUpdateLog();

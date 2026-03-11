@@ -9,11 +9,14 @@ export function toCamelGoal(row) {
     mode: row.mode,
     target: row.target,
     unit: row.unit,
+    color: row.color || '',
     dueDate: row.due_date,
     periodType: row.period_type,
     periodEnd: row.period_end,
     currentPeriodStart: row.current_period_start,
     recurrenceMode: row.recurrence_mode,
+    linkedGoalId: row.linked_goal_id,
+    position: row.position ?? null,
     currentValue: 0,
     actions: [],
   };
@@ -25,6 +28,7 @@ export function toCamelAction(row) {
     name: row.name,
     parentGoalId: row.parent_goal_id,
     status: row.status,
+    mode: row.mode,
     target: row.target,
     unit: row.unit,
     dueDate: row.due_date,
@@ -60,11 +64,14 @@ export function toSnakeGoal(data) {
   if (data.mode !== undefined) map.mode = data.mode;
   if (data.target !== undefined) map.target = data.target;
   if (data.unit !== undefined) map.unit = data.unit;
+  if (data.color !== undefined) map.color = data.color;
   if (data.dueDate !== undefined) map.due_date = data.dueDate;
   if (data.periodType !== undefined) map.period_type = data.periodType;
   if (data.periodEnd !== undefined) map.period_end = data.periodEnd;
   if (data.currentPeriodStart !== undefined) map.current_period_start = data.currentPeriodStart;
   if (data.recurrenceMode !== undefined) map.recurrence_mode = data.recurrenceMode;
+  if (data.linkedGoalId !== undefined) map.linked_goal_id = data.linkedGoalId;
+  if (data.position !== undefined) map.position = data.position;
   return map;
 }
 
@@ -74,6 +81,7 @@ export function toSnakeAction(data) {
   if (data.name !== undefined) map.name = data.name;
   if (data.parentGoalId !== undefined) map.parent_goal_id = data.parentGoalId;
   if (data.status !== undefined) map.status = data.status;
+  if (data.mode !== undefined) map.mode = data.mode;
   if (data.target !== undefined) map.target = data.target;
   if (data.unit !== undefined) map.unit = data.unit;
   if (data.dueDate !== undefined) map.due_date = data.dueDate;

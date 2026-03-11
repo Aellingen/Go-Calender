@@ -16,14 +16,16 @@ function toISO(year, month, day) {
 function getDaysInMonth(year, month) { return new Date(year, month + 1, 0).getDate(); }
 function getStartDay(year, month) { const d = new Date(year, month, 1).getDay(); return d === 0 ? 6 : d - 1; }
 
-export default function DatePicker({ value, onChange, placeholder = 'Select date' }) {
+export default function DatePicker({ value, onChange }) {
+  const isOpenEnded = value === 'open-ended';
+  const dateValue = isOpenEnded ? '' : value;
   const [open, setOpen] = useState(false);
   const btnRef = useRef(null);
   const popRef = useRef(null);
   const today = new Date();
   const todayISO = toISO(today.getFullYear(), today.getMonth(), today.getDate());
 
-  const initial = value ? new Date(value + 'T00:00:00') : today;
+  const initial = dateValue ? new Date(dateValue + 'T00:00:00') : today;
   const [viewYear, setViewYear] = useState(initial.getFullYear());
   const [viewMonth, setViewMonth] = useState(initial.getMonth());
 
@@ -40,7 +42,19 @@ export default function DatePicker({ value, onChange, placeholder = 'Select date
   useEffect(() => {
     if (open && btnRef.current) {
       const rect = btnRef.current.getBoundingClientRect();
-      setPopPos({ top: rect.bottom + 6, left: rect.left });
+      const popH = 340;
+      const popW = 260;
+      let top = rect.bottom + 6;
+      let left = rect.left;
+      if (top + popH > window.innerHeight) {
+        top = rect.top - popH - 6;
+      }
+      if (left + popW > window.innerWidth) {
+        left = window.innerWidth - popW - 8;
+      }
+      if (top < 0) top = 8;
+      if (left < 0) left = 8;
+      setPopPos({ top, left });
     }
   }, [open]);
 
@@ -57,11 +71,11 @@ export default function DatePicker({ value, onChange, placeholder = 'Select date
       <button ref={btnRef} type="button" onClick={() => setOpen(!open)} style={{
         background: 'var(--bg)', border: '1px solid var(--border)',
         borderRadius: 'var(--r-md)', padding: '10px 14px', fontSize: 13.5,
-        color: value ? 'var(--text)' : 'var(--text-muted)',
+        color: dateValue ? 'var(--text)' : 'var(--text-muted)',
         outline: 'none', width: '100%', cursor: 'pointer', textAlign: 'left',
         fontFamily: "'Nunito', sans-serif", transition: 'border-color 0.15s',
       }}>
-        {value ? formatDisplayDate(value) : placeholder}
+        {dateValue ? formatDisplayDate(dateValue) : isOpenEnded ? 'No due date' : 'Pick a date'}
       </button>
 
       {open && (
@@ -83,6 +97,23 @@ export default function DatePicker({ value, onChange, placeholder = 'Select date
             </button>
           </div>
 
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
+            <button type="button" onClick={() => {
+              if (isOpenEnded) {
+                onChange('');
+              } else {
+                onChange('open-ended');
+              }
+            }} style={{
+              background: isOpenEnded ? 'var(--accent-softer)' : 'var(--bg)',
+              color: isOpenEnded ? 'var(--accent)' : 'var(--text-muted)',
+              border: 'none', borderRadius: 'var(--r-full)',
+              padding: '3px 10px', fontSize: 11, fontWeight: 700,
+              cursor: 'pointer', fontFamily: "'Nunito', sans-serif",
+              transition: 'all 0.15s',
+            }}>Open-ended</button>
+          </div>
+
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 0 }}>
             {DAYS.map((d) => (
               <div key={d} style={{ textAlign: 'center', fontSize: 10, color: 'var(--text-muted)', fontWeight: 700, padding: '3px 0' }}>{d}</div>
@@ -94,21 +125,23 @@ export default function DatePicker({ value, onChange, placeholder = 'Select date
             {Array.from({ length: daysInMonth }).map((_, i) => {
               const day = i + 1;
               const iso = toISO(viewYear, viewMonth, day);
-              const isSelected = iso === value;
+              const isSelected = iso === dateValue;
               const isToday = iso === todayISO;
+              const isPast = iso < todayISO;
               return (
-                <button key={day} type="button" onClick={() => handleSelect(day)} style={{
+                <button key={day} type="button" disabled={isPast} onClick={() => !isPast && handleSelect(day)} style={{
                   width: 32, height: 32, borderRadius: 'var(--r-sm)',
                   border: isToday && !isSelected ? '1px solid var(--accent-light)' : '1px solid transparent',
                   background: isSelected ? 'var(--accent)' : 'transparent',
-                  color: isSelected ? '#fff' : 'var(--text)',
+                  color: isPast ? 'var(--text-muted)' : isSelected ? '#fff' : 'var(--text)',
                   fontSize: 12.5, fontWeight: isSelected || isToday ? 700 : 500,
-                  cursor: 'pointer',
+                  cursor: isPast ? 'default' : 'pointer',
+                  opacity: isPast ? 0.35 : 1,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   transition: 'all 0.1s',
                 }}
-                onMouseEnter={(e) => { if (!isSelected) e.currentTarget.style.background = 'var(--accent-softer)'; }}
-                onMouseLeave={(e) => { if (!isSelected) e.currentTarget.style.background = 'transparent'; }}
+                onMouseEnter={(e) => { if (!isSelected && !isPast) e.currentTarget.style.background = 'var(--accent-softer)'; }}
+                onMouseLeave={(e) => { if (!isSelected && !isPast) e.currentTarget.style.background = 'transparent'; }}
                 >
                   {day}
                 </button>
@@ -116,24 +149,6 @@ export default function DatePicker({ value, onChange, placeholder = 'Select date
             })}
           </div>
 
-          <label style={{
-            display: 'flex', alignItems: 'center', gap: 8,
-            marginTop: 12, padding: '6px 0', cursor: 'pointer',
-            fontSize: 12.5, fontWeight: 600, color: 'var(--text-muted)',
-          }}>
-            <input
-              type="checkbox"
-              checked={!value}
-              onChange={(e) => {
-                if (e.target.checked) {
-                  onChange('');
-                  setOpen(false);
-                }
-              }}
-              style={{ accentColor: 'var(--accent)', width: 15, height: 15, cursor: 'pointer' }}
-            />
-            Open-ended (no due date)
-          </label>
         </div>
       )}
     </div>

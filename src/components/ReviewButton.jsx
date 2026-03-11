@@ -4,7 +4,6 @@ import { useUIStore } from '../store/ui';
 export default function ReviewButton() {
   const { data: pending = [] } = usePendingReviews();
   const openReviewPanel = useUIStore((s) => s.openReviewPanel);
-  const calendarOpen = useUIStore((s) => s.calendarOpen);
   const count = pending.length;
   const hasPending = count > 0;
 
@@ -14,7 +13,7 @@ export default function ReviewButton() {
       style={{
         position: 'fixed',
         bottom: 28,
-        right: calendarOpen ? 308 : 84,
+        right: 308,
         display: 'flex',
         alignItems: 'center',
         gap: 8,

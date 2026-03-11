@@ -1,6 +1,9 @@
-import { useEffect } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { format } from 'date-fns';
-import { useGoals } from '../hooks/useGoals';
+import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragOverlay } from '@dnd-kit/core';
+import { SortableContext, rectSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { useGoals, useReorderGoals } from '../hooks/useGoals';
 import { useUIStore } from '../store/ui';
 import CalendarSidebar from '../components/CalendarPanel';
 import PinnedActions from '../components/PinnedActions';
@@ -15,12 +18,49 @@ import ReviewButton from '../components/ReviewButton';
 import ReviewPanel from '../components/ReviewPanel';
 import ToastContainer from '../components/Toast';
 
+function SortableGoalCard({ goal, goals, onClick }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: goal.id });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+  };
+  return (
+    <div ref={setNodeRef} style={style}>
+      <GoalCard
+        goal={goal}
+        goals={goals}
+        onClick={onClick}
+        dragHandleListeners={listeners}
+        dragHandleAttributes={attributes}
+      />
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const { data: goals = [], isLoading } = useGoals('active');
-  const calendarOpen = useUIStore((s) => s.calendarOpen);
-
+  const reorder = useReorderGoals();
   const goalDetailModal = useUIStore((s) => s.goalDetailModal);
   const actionEditModal = useUIStore((s) => s.actionEditModal);
+  const [activeId, setActiveId] = useState(null);
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+  const goalIds = useMemo(() => goals.map((g) => g.id), [goals]);
+  const activeGoal = activeId ? goals.find((g) => g.id === activeId) : null;
+
+  function handleDragStart(event) {
+    setActiveId(event.active.id);
+  }
+
+  function handleDragEnd(event) {
+    setActiveId(null);
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = goals.findIndex((g) => g.id === active.id);
+    const newIndex = goals.findIndex((g) => g.id === over.id);
+    const newOrder = arrayMove(goals, oldIndex, newIndex);
+    reorder.mutate(newOrder.map((g) => g.id));
+  }
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -189,19 +229,36 @@ export default function Dashboard() {
                 </p>
               </div>
             ) : (
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
-                gap: 16,
-              }}>
-                {goals.map((g) => (
-                  <GoalCard
-                    key={g.id}
-                    goal={g}
-                    onClick={() => useUIStore.getState().openGoalDetail(g)}
-                  />
-                ))}
-              </div>
+              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+                <SortableContext items={goalIds} strategy={rectSortingStrategy}>
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
+                    gap: 16,
+                  }}>
+                    {goals.map((g) => (
+                      <SortableGoalCard
+                        key={g.id}
+                        goal={g}
+                        goals={goals}
+                        onClick={() => useUIStore.getState().openGoalDetail(g)}
+                      />
+                    ))}
+                  </div>
+                </SortableContext>
+                <DragOverlay>
+                  {activeGoal ? (
+                    <div style={{
+                      transform: 'scale(0.95) rotate(2deg)',
+                      boxShadow: '0 16px 40px rgba(0,0,0,0.15)',
+                      borderRadius: 'var(--r-xl)',
+                      pointerEvents: 'none',
+                    }}>
+                      <GoalCard goal={activeGoal} goals={goals} />
+                    </div>
+                  ) : null}
+                </DragOverlay>
+              </DndContext>
             )}
           </section>
         </main>
@@ -214,6 +271,7 @@ export default function Dashboard() {
       {goalDetailModal && (
         <GoalDetailModal
           goal={goalDetailModal}
+          goals={goals}
           onClose={() => useUIStore.getState().closeGoalDetail()}
         />
       )}

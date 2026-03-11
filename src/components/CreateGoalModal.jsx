@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useUIStore } from '../store/ui';
-import { useCreateGoal } from '../hooks/useGoals';
+import { useCreateGoal, useGoals } from '../hooks/useGoals';
 import DatePicker from './DatePicker';
 
 export default function CreateGoalModal() {
@@ -50,15 +50,22 @@ function ModalBackdrop({ onClose, children }) {
 function FormContent({ onClose }) {
   const nameRef = useRef(null);
   const createGoal = useCreateGoal();
+  const { data: goals = [] } = useGoals('active');
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [dueDate, setDueDate] = useState('');
-  const [mode, setMode] = useState('checkbox');
+  const [mode, setMode] = useState('simple');
   const [target, setTarget] = useState('');
   const [unit, setUnit] = useState('');
+  const [periodType, setPeriodType] = useState('');
+  const [linkedGoalId, setLinkedGoalId] = useState('');
+  const [color, setColor] = useState('');
   const [error, setError] = useState('');
 
   useEffect(() => { nameRef.current?.focus(); }, []);
+  useEffect(() => {
+    if (periodType === 'weekly' || periodType === 'monthly') setDueDate('');
+  }, [periodType]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -66,8 +73,11 @@ function FormContent({ onClose }) {
     setError('');
     const data = { name: name.trim(), mode };
     if (description.trim()) data.description = description.trim();
-    if (dueDate) data.dueDate = dueDate;
-    if (mode === 'numerical') {
+    if (dueDate && dueDate !== 'open-ended') data.dueDate = dueDate;
+    if (periodType) data.periodType = periodType;
+    if (linkedGoalId) data.linkedGoalId = linkedGoalId;
+    if (color) data.color = color;
+    if (mode === 'counted') {
       if (target !== '') data.target = Number(target);
       if (unit.trim()) data.unit = unit.trim();
     }
@@ -100,12 +110,28 @@ function FormContent({ onClose }) {
         <Field label="Description">
           <input type="text" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Optional context" style={inputStyle} />
         </Field>
-        <Field label="Due date">
-          <DatePicker value={dueDate} onChange={setDueDate} placeholder="Pick a date" />
-        </Field>
+        <div style={{ display: 'flex', gap: 12 }}>
+          <Field label="Recurring" style={{ flex: 1 }}>
+            <select value={periodType} onChange={(e) => setPeriodType(e.target.value)} style={{ ...inputStyle, appearance: 'none' }}>
+              <option value="">None</option>
+              <option value="weekly">Weekly</option>
+              <option value="monthly">Monthly</option>
+            </select>
+          </Field>
+          <Field label="Due date" style={{ flex: 1 }}>
+            {periodType === 'weekly' || periodType === 'monthly' ? (
+              <div style={{ ...inputStyle, color: 'var(--text-muted)', fontSize: 13, display: 'flex', alignItems: 'center' }}>
+                {periodType === 'weekly' ? 'Resets every Sunday' : 'Resets at end of month'}
+              </div>
+            ) : (
+              <DatePicker value={dueDate} onChange={setDueDate} />
+            )}
+          </Field>
+        </div>
+        <ColorPicker value={color} onChange={setColor} />
         <Field label="Mode">
           <div style={{ display: 'flex', gap: 0, borderRadius: 'var(--r-md)', overflow: 'hidden', border: '1px solid var(--border)' }}>
-            {['checkbox', 'numerical'].map((m) => (
+            {['simple', 'counted'].map((m) => (
               <button key={m} type="button" onClick={() => setMode(m)} style={{
                 flex: 1, padding: '9px 0', fontSize: 12.5, fontWeight: 700,
                 border: 'none', cursor: 'pointer',
@@ -119,7 +145,7 @@ function FormContent({ onClose }) {
             ))}
           </div>
         </Field>
-        {mode === 'numerical' && (
+        {mode === 'counted' && (
           <div style={{ display: 'flex', gap: 12 }}>
             <Field label="Target" style={{ flex: 1 }}>
               <input type="number" step="any" value={target} onChange={(e) => setTarget(e.target.value)} placeholder="e.g. 42" style={inputStyle} />
@@ -128,6 +154,16 @@ function FormContent({ onClose }) {
               <input type="text" value={unit} onChange={(e) => setUnit(e.target.value)} placeholder="e.g. km" style={inputStyle} />
             </Field>
           </div>
+        )}
+        {mode === 'counted' && (
+          <Field label="Feeds into">
+            <select value={linkedGoalId} onChange={(e) => setLinkedGoalId(e.target.value)} style={{ ...inputStyle, appearance: 'none' }}>
+              <option value="">None</option>
+              {goals.filter((g) => g.mode === 'counted').map((g) => (
+                <option key={g.id} value={g.id}>{g.name}</option>
+              ))}
+            </select>
+          </Field>
         )}
         {error && <p style={{ fontSize: 12, color: 'var(--danger)', fontWeight: 600, margin: 0 }}>{error}</p>}
       </div>
@@ -146,6 +182,40 @@ function FormContent({ onClose }) {
         </button>
       </div>
     </form>
+  );
+}
+
+const COLOR_OPTIONS = [
+  { key: 'violet', solid: 'var(--accent)' },
+  { key: 'orange', solid: 'var(--warm)' },
+  { key: 'green', solid: 'var(--success)' },
+  { key: 'red', solid: 'var(--danger)' },
+];
+
+function ColorPicker({ value, onChange }) {
+  return (
+    <div>
+      <label style={{ display: 'block', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)', marginBottom: 5 }}>
+        Color
+      </label>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        {COLOR_OPTIONS.map(({ key, solid }) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => onChange(value === key ? '' : key)}
+            style={{
+              width: 22, height: 22, borderRadius: '50%',
+              background: solid, border: 'none', cursor: 'pointer',
+              outline: value === key ? `2px solid ${solid}` : 'none',
+              outlineOffset: 2,
+              transition: 'outline 0.15s',
+              flexShrink: 0,
+            }}
+          />
+        ))}
+      </div>
+    </div>
   );
 }
 
