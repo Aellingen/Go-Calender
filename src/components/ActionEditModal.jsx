@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
-import { useUpdateAction, useActions } from '../hooks/useActions';
+import { useUpdateAction, useDeleteAction, useActions } from '../hooks/useActions';
 import DatePicker from './DatePicker';
 
 export default function ActionEditModal({ action, onClose }) {
   const updateAction = useUpdateAction();
+  const deleteAction = useDeleteAction();
   const { data: allActions = [] } = useActions();
   const [name, setName] = useState(action.name || '');
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [mode, setMode] = useState(action.mode || 'counted');
   const [target, setTarget] = useState(action.target != null ? String(action.target) : '');
   const [dueDate, setDueDate] = useState(action.dueDate || '');
@@ -85,20 +87,10 @@ export default function ActionEditModal({ action, onClose }) {
             <input value={name} onChange={(e) => setName(e.target.value)} style={inputStyle} />
           </Field>
           <Field label="Mode">
-            <div style={{ display: 'flex', gap: 0, borderRadius: 'var(--r-md)', overflow: 'hidden', border: '1px solid var(--border)' }}>
-              {['simple', 'counted'].map((m) => (
-                <button key={m} type="button" onClick={() => setMode(m)} style={{
-                  flex: 1, padding: '9px 0', fontSize: 12.5, fontWeight: 700,
-                  border: 'none', cursor: 'pointer',
-                  background: mode === m ? 'var(--accent)' : 'var(--bg)',
-                  color: mode === m ? '#fff' : 'var(--text-muted)',
-                  transition: 'all 0.15s',
-                  textTransform: 'capitalize',
-                }}>
-                  {m}
-                </button>
-              ))}
-            </div>
+            <select value={mode} onChange={(e) => setMode(e.target.value)} style={{ ...inputStyle, appearance: 'none' }}>
+              <option value="simple">Checkbox</option>
+              <option value="counted">Counted</option>
+            </select>
           </Field>
           {mode === 'counted' && (
             <Field label="Target">
@@ -133,6 +125,13 @@ export default function ActionEditModal({ action, onClose }) {
           )}
 
           <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+            <button onClick={() => setDeleteConfirm(true)} style={{
+              flex: 1, background: 'var(--danger, #dc2626)', color: '#fff',
+              border: 'none', borderRadius: 'var(--r-full)', padding: '10px 0',
+              fontSize: 13, fontWeight: 700, cursor: 'pointer',
+            }}>
+              Delete
+            </button>
             <button onClick={handleSave} disabled={saving} style={{
               flex: 1, background: 'var(--accent)', color: '#fff',
               border: 'none', borderRadius: 'var(--r-full)', padding: '10px 0',
@@ -141,16 +140,66 @@ export default function ActionEditModal({ action, onClose }) {
             }}>
               {saving ? 'Saving...' : 'Save'}
             </button>
-            <button onClick={onClose} style={{
-              flex: 1, background: 'var(--bg)', color: 'var(--text-secondary)',
-              border: '1px solid var(--border)', borderRadius: 'var(--r-full)', padding: '10px 0',
-              fontSize: 13, fontWeight: 600, cursor: 'pointer',
-            }}>
-              Cancel
-            </button>
           </div>
         </div>
       </div>
+
+      {deleteConfirm && (
+        <div
+          onClick={(e) => { if (e.target === e.currentTarget) setDeleteConfirm(false); }}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 100,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: 'rgba(28,25,23,0.4)', backdropFilter: 'blur(4px)',
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="animate-modal-in"
+            style={{
+              background: 'var(--surface)', border: '1px solid var(--border)',
+              borderRadius: 'var(--r-2xl)', padding: '28px 32px',
+              width: 340, textAlign: 'center', boxShadow: 'var(--shadow-lg)',
+            }}
+          >
+            <div style={{
+              width: 44, height: 44, borderRadius: 'var(--r-lg)',
+              background: 'var(--danger-light, #fef2f2)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              margin: '0 auto 14px',
+            }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--danger, #dc2626)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+              </svg>
+            </div>
+            <h3 className="font-display" style={{ fontSize: 18, color: 'var(--text)', margin: '0 0 6px' }}>
+              Delete action?
+            </h3>
+            <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '0 0 22px', lineHeight: 1.5 }}>
+              This will permanently delete <strong>{action.name}</strong> and its logs.
+            </p>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
+              <button onClick={() => setDeleteConfirm(false)} style={{
+                padding: '9px 22px', borderRadius: 'var(--r-full)', fontSize: 13,
+                fontWeight: 700, color: 'var(--text-muted)', background: 'var(--bg)',
+                border: '1px solid var(--border)', cursor: 'pointer',
+              }}>
+                Cancel
+              </button>
+              <button onClick={async () => {
+                try { await deleteAction.mutateAsync(action.id); } catch {}
+                onClose();
+              }} style={{
+                padding: '9px 22px', borderRadius: 'var(--r-full)', fontSize: 13,
+                fontWeight: 700, color: '#fff', background: 'var(--danger, #dc2626)',
+                border: 'none', cursor: 'pointer',
+              }}>
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -165,7 +214,7 @@ function Field({ label, children }) {
 }
 
 const inputStyle = {
-  background: 'var(--bg)', border: '1px solid var(--border)',
+  background: 'var(--surface)', border: '1px solid var(--border)',
   borderRadius: 'var(--r-md)', padding: '10px 14px', fontSize: 13.5,
   color: 'var(--text)', outline: 'none', width: '100%',
   fontFamily: "'Nunito', sans-serif",
